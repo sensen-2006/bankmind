@@ -1,0 +1,45 @@
+name: Cloud container startup investigation
+
+on:
+  push:
+    branches: [verify/cloud-container-startup]
+
+permissions:
+  contents: read
+
+jobs:
+  startup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Check out this commit
+        run: |
+          git init
+          git remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
+          git fetch --depth=1 origin "$GITHUB_SHA"
+          git checkout --detach FETCH_HEAD
+      - name: Build the Cloud Run Dockerfile
+        run: docker build --tag bankmind-cloud-smoke .
+      - name: Time readiness with an empty SQLite database
+        run: |
+          set -euo pipefail
+          start=$SECONDS
+          docker run --detach --name bankmind-smoke --cpus 0.25 --memory 512m \
+            --publish 127.0.0.1:8000:8000 \
+            --env BANKMIND_TRIAL_PASSWORD=synthetic-readiness-passphrase \
+            --env BANKMIND_TRIAL_DEEPSEEK_ENABLED=true \
+            --env BANKMIND_DEEPSEEK_KEY=synthetic-key \
+            --env BANKMIND_DEEPSEEK_URL=https://example.invalid/v1 \
+            --env BANKMIND_DEEPSEEK_MODEL=synthetic-model bankmind-cloud-smoke
+          until curl --silent --fail --max-time 1 http://127.0.0.1:8000/api/ready; do
+            if [ "$(docker inspect --format '{{.State.Running}}' bankmind-smoke)" != true ] || [ "$((SECONDS - start))" -ge 150 ]; then
+              exit 1
+            fi
+            sleep 1
+          done
+          printf '\nReady after %s seconds\n' "$((SECONDS - start))"
+      - name: Print container state and startup logs
+        if: always()
+        run: |
+          docker inspect --format '{{json .State}}' bankmind-smoke || true
+          docker logs --timestamps bankmind-smoke || true
