@@ -1,0 +1,15 @@
+**
+!requirements-team.txt
+!apps/
+!apps/api/
+!apps/api/**
+apps/api/**/__pycache__/
+!scripts/
+!scripts/generate_demo.py
+!data/
+!data/demo/
+!data/demo/**
+data/demo/ground_truth.json
+!bankmind_data_pack/
+!bankmind_data_pack/07_app_ready/
+!bankmind_data_pack/07_app_ready/**

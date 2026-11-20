@@ -1,0 +1,1 @@
+<view class="loading-state"><view class="skeleton"><view/><view/><view/></view><view class="loading-text">{{text}}…</view></view>

@@ -1,0 +1,111 @@
+<view class="workspace-mode workspace-mode-{{workspaceMode}}">
+<view class="page">
+  <view class="title">{{taskId ? '数据导入' : '新建对账任务'}}</view>
+  <view wx:if="{{task}}">{{task.name}} · {{task.currency}}<view class="muted">{{task.start_date}} — {{task.end_date}}</view></view>
+  <view wx:if="{{error}}" class="notice error">{{error}}</view>
+  <view wx:if="{{progress}}" class="notice">{{progress}}</view>
+  <bm-loading wx:if="{{!task && !createReady && !error}}" text="正在读取任务"/>
+  <view class="card" wx:if="{{!taskId && createReady}}">
+    <view class="form-label">任务名称</view>
+    <input value="{{newName}}" data-field="newName" bindinput="editTask" maxlength="120" placeholder="例如：10 月基本户对账"/>
+    <view class="form-label">银行账户</view>
+    <picker wx:if="{{accounts.length}}" range="{{accounts}}" range-key="label" value="{{accountIndex}}" data-field="accountIndex" bindchange="editTask">{{accounts[accountIndex].label}} ▾</picker>
+    <view class="notice" wx:else>当前没有授权的银行账户。</view>
+    <view class="form-label">期间开始</view>
+    <picker mode="date" value="{{startDate}}" data-field="startDate" bindchange="editTask">{{startDate || '选择开始日期'}} ▾</picker>
+    <view class="form-label">期间结束</view>
+    <picker mode="date" value="{{endDate}}" data-field="endDate" bindchange="editTask">{{endDate || '选择结束日期'}} ▾</picker>
+    <button class="primary" loading="{{busy}}" disabled="{{busy || !accounts.length}}" bindtap="createTask">创建并导入数据</button>
+  </view>
+  <view wx:if="{{task && !enabled}}" class="notice">当前部署未开启后台作业，请在网页继续导入。</view>
+  <view class="card" wx:if="{{task && !canModify}}">
+    <view class="card-title">已发布的记录</view>
+    <view class="kv"><text>银行流水</text><text>{{task.summary.sides.BANK.valid}} 行有效</text></view>
+    <view class="kv"><text>企业账簿</text><text>{{task.summary.sides.BOOK.valid}} 行有效</text></view>
+  </view>
+  <block wx:if="{{task && enabled && canModify}}">
+    <view wx:if="{{!task.current_run}}" class="card">
+      <view class="heading">本地分块上传</view>
+      <picker mode="selector" range="{{sides}}" value="{{side}}" data-name="side" bindchange="setting">
+        <view class="control">数据来源 · {{sides[side]}}</view>
+      </picker>
+      <button class="secondary" disabled="{{busy}}" bindtap="chooseFile">{{file ? file.name : '从聊天选择文件'}}</button>
+      <view class="field">Excel 工作表<input class="control" placeholder="默认首表" value="{{sheet}}" data-name="sheet" bindinput="setting" disabled="{{busy}}"/></view>
+      <view class="field">表头行号<input class="control" type="number" value="{{header}}" data-name="header" bindinput="setting" disabled="{{busy}}"/></view>
+      <view class="muted">支持 CSV、Excel、文本 PDF。断线后重新选择同一文件和配置即可续传。</view>
+      <button class="primary" disabled="{{!file || busy}}" bindtap="enqueueFile">上传或继续上传</button>
+    </view>
+    <view wx:if="{{batches.length}}" class="card">
+      <view class="heading">待核对预览</view>
+      <button wx:for="{{batches}}" wx:key="id" class="secondary" disabled="{{busy}}" data-id="{{item.id}}" bindtap="selectBatch">
+        {{item.side === 'BANK' ? '银行' : '账簿'}} · {{item.filename}} · {{item.row_count}} 行
+      </button>
+    </view>
+    <view wx:if="{{draft}}" class="card">
+      <view class="heading">{{draft.batch.filename}}</view>
+      <button class="secondary" disabled="{{busy}}" bindtap="original">打开授权原件</button>
+      <scroll-view scroll-x class="preview">
+        <view wx:for="{{draft.rows}}" wx:key="row_no" class="preview-row">
+          <text>{{item.page ? '第 ' + item.page + ' 页 · ' : ''}}原行 {{item.row_no}}</text>
+          <text class="cell" wx:for="{{item.cells}}" wx:for-item="cell" wx:key="key">{{cell.key}}　{{cell.value}}</text>
+        </view>
+      </scroll-view>
+      <view wx:if="{{draft.visual}}" class="actions">
+        <button wx:if="{{draft.extractionPage < 1}}" class="secondary" disabled="{{busy}}" data-step="1" bindtap="extraction">读取完整提取记录</button>
+        <button wx:if="{{draft.extractionPage > 1}}" class="secondary" disabled="{{busy}}" data-step="-1" bindtap="extraction">上一批</button>
+        <button wx:if="{{draft.hasNext}}" class="secondary" disabled="{{busy}}" data-step="1" bindtap="extraction">下一批</button>
+      </view>
+      <picker mode="selector" range="{{directionLabels}}" value="{{draft.direction + 1}}" data-name="direction" bindchange="edit" disabled="{{busy}}">
+        <view class="control">收支方向 · {{directionLabels[draft.direction + 1]}}</view>
+      </picker>
+      <picker mode="selector" range="{{formatLabels}}" value="{{draft.format + 1}}" data-name="format" bindchange="edit" disabled="{{busy}}">
+        <view class="control">日期格式 · {{formatLabels[draft.format + 1]}}</view>
+      </picker>
+      <picker wx:for="{{draft.fields}}" wx:key="id" mode="selector" range="{{draft.choices}}" value="{{item.index}}"
+        data-name="field" data-index="{{index}}" bindchange="edit" disabled="{{busy}}">
+        <view class="control">{{item.title}} · {{draft.choices[item.index]}}</view>
+      </picker>
+      <view wx:if="{{draft.document}}">
+        <view class="heading">独立核验原件</view>
+        <view class="muted">从原件读笔数、收支与余额。流水号逐行按原件抄录，空白号保留空行。</view>
+        <view wx:for="{{draft.totals}}" wx:key="id" class="field">{{item.title}}
+          <input class="control" value="{{item.value}}" maxlength="{{item.id === 'note' ? 300 : 22}}" data-name="total" data-index="{{index}}" bindinput="edit" disabled="{{busy}}"/>
+        </view>
+        <picker mode="selector" range="{{orders}}" value="{{draft.order}}" data-name="order" bindchange="edit" disabled="{{busy}}">
+          <view class="control">逐笔余额顺序 · {{orders[draft.order]}}</view>
+        </picker>
+        <block wx:if="{{draft.visual}}">
+          <view class="row field">原件确无流水号列<switch data-name="noReference" checked="{{draft.noReference}}" bindchange="edit" disabled="{{busy}}"/></view>
+          <view class="page-controls" wx:for="{{draft.pages}}" wx:for-item="sheetPage" wx:for-index="pageIndex" wx:key="number">
+            <view>原件第 {{sheetPage.number}} 页</view>
+            <view wx:for="{{sheetPage.fields}}" wx:key="id" class="field">{{item.title}}
+              <textarea wx:if="{{item.id === 'references'}}" class="control" value="{{item.value}}" maxlength="-1"
+                data-name="page" data-page="{{pageIndex}}" data-index="{{index}}" bindinput="edit" disabled="{{busy || draft.noReference}}"/>
+              <input wx:else class="control" value="{{item.value}}" maxlength="22"
+                data-name="page" data-page="{{pageIndex}}" data-index="{{index}}" bindinput="edit" disabled="{{busy}}"/>
+            </view>
+          </view>
+        </block>
+        <view class="row field">已核对原件与控制数<switch data-name="sourceVerified" checked="{{draft.sourceVerified}}" bindchange="edit" disabled="{{busy}}"/></view>
+      </view>
+      <view class="row field">已确认列、日期和收支方向<switch data-name="confirmed" checked="{{draft.confirmed}}" bindchange="edit" disabled="{{busy}}"/></view>
+      <button class="primary" disabled="{{busy || !draft.confirmed || (draft.document && !draft.sourceVerified)}}" bindtap="publish">提交后台校验并发布</button>
+    </view>
+    <button wx:if="{{canMatch}}" class="primary" disabled="{{busy}}" bindtap="match">运行后台匹配</button>
+    <button wx:if="{{canRerun}}" class="secondary" disabled="{{busy}}" data-rerun="{{true}}" bindtap="match">重新运行匹配</button>
+    <view class="card">
+      <view class="heading">作业记录</view>
+      <view wx:if="{{!jobs.length}}" class="muted">暂无作业</view>
+      <view wx:for="{{jobs}}" wx:key="id" class="job">
+        <view>{{item.title}} · {{item.displayStatus}}</view>
+        <view wx:if="{{item.total_bytes}}" class="muted">{{item.received_bytes}} / {{item.total_bytes}} 字节</view>
+        <view wx:if="{{item.errorText}}" class="notice error">{{item.errorText}}</view>
+        <view class="actions">
+          <button wx:if="{{item.error && item.error.retryable}}" class="secondary" disabled="{{busy}}" data-id="{{item.id}}" data-action="retry" bindtap="jobAction">重试</button>
+          <button wx:if="{{item.canCancel}}" class="secondary" disabled="{{busy}}" data-id="{{item.id}}" data-action="cancel" bindtap="jobAction">取消</button>
+        </view>
+      </view>
+    </view>
+  </block>
+</view>
+</view>

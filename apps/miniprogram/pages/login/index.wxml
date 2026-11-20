@@ -1,0 +1,29 @@
+<view class="workspace-mode workspace-mode-{{workspaceMode}}">
+<view class="page login">
+  <view class="login-art"><image src="{{workspaceMode === 'game' ? '/assets/cinema-still.jpg' : '/assets/glasshouse-mobile.jpg'}}" mode="aspectFill"/></view>
+  <view class="mobile-brand"><view class="brand-link"><view/><view/></view><text>BankMind</text></view>
+  <view class="login-form">
+    <view class="login-heading" role="heading">登录 BankMind</view>
+    <view class="notice error" wx:if="{{!available}}">{{unavailableMessage}}</view>
+    <block wx:else>
+      <view class="notice error" wx:if="{{connectionError}}">{{connectionError}}
+        <button class="inline-action login-retry" bindtap="loadOptions">重试连接</button>
+      </view>
+      <view class="form-label">企业用户名</view>
+      <input data-field="username" value="{{username}}" bindinput="input" aria-label="企业用户名" disabled="{{busy}}"/>
+      <view class="form-label">登录密码</view>
+      <input data-field="password" value="{{password}}" password bindinput="input" aria-label="登录密码" disabled="{{busy}}" confirm-type="go" bindconfirm="login"/>
+      <view class="notice error" wx:if="{{error}}">{{error}}</view>
+      <button class="primary" loading="{{busy}}" disabled="{{busy}}" bindtap="login">登录工作台 <text>→</text></button>
+      <button class="secondary" wx:if="{{mode === 'wechat'}}" disabled="{{busy}}" bindtap="wechat">微信身份登录</button>
+      <view class="login-accounts" wx:if="{{accounts.length}}">
+        <view class="form-label">课程演示账户</view>
+        <view class="account-choices">
+          <button wx:for="{{accounts}}" wx:key="username" class="secondary account-choice {{username === item.username ? 'selected' : ''}}" data-username="{{item.username}}" disabled="{{busy}}" bindtap="chooseAccount">{{item.label}}</button>
+        </view>
+      </view>
+    </block>
+  </view>
+  <view wx:if="{{workspaceMode === 'game'}}" class="login-credit">影像 © Blender Foundation · Spring</view>
+</view>
+</view>

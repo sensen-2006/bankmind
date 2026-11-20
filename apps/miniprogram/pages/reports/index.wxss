@@ -1,0 +1,4 @@
+.card > .mono {
+  margin-top: 6rpx;
+  letter-spacing: .3rpx;
+}

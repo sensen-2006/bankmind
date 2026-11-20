@@ -1,0 +1,61 @@
+{
+  "pages": [
+    "pages/login/index",
+    "pages/home/index",
+    "pages/tasks/index",
+    "pages/work/index",
+    "pages/quality/index",
+    "pages/reports/index",
+    "pages/approvals/index",
+    "pages/alerts/index",
+    "pages/detail/index",
+    "pages/evidence/index",
+    "pages/profile/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "银账智核",
+    "navigationBarBackgroundColor": "#14252d",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#101c22",
+    "backgroundTextStyle": "light",
+    "enablePullDownRefresh": true
+  },
+  "tabBar": {
+    "color": "#aebeb7",
+    "selectedColor": "#dfc48b",
+    "backgroundColor": "#14252d",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/home/index",
+        "text": "工作台",
+        "iconPath": "assets/navigation/home-default.png",
+        "selectedIconPath": "assets/navigation/home-active.png"
+      },
+      {
+        "pagePath": "pages/tasks/index",
+        "text": "对账任务",
+        "iconPath": "assets/navigation/tasks-default.png",
+        "selectedIconPath": "assets/navigation/tasks-active.png"
+      },
+      {
+        "pagePath": "pages/approvals/index",
+        "text": "待复核",
+        "iconPath": "assets/navigation/review-default.png",
+        "selectedIconPath": "assets/navigation/review-active.png"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的",
+        "iconPath": "assets/navigation/profile-default.png",
+        "selectedIconPath": "assets/navigation/profile-active.png"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "usingComponents": {
+    "bm-loading": "/components/bm-loading/index",
+    "bm-help": "/components/bm-help/index"
+  }
+}

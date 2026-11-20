@@ -1,0 +1,14 @@
+# Runtime only. pip resolves compatible wheels for the selected Python version.
+fastapi>=0.115,<1
+uvicorn>=0.34,<1
+sqlalchemy>=2.0,<3
+pydantic>=2.10,<3
+python-multipart>=0.0.20,<1
+python-dotenv>=1.0,<2
+openpyxl>=3.1,<4
+pypdf>=6,<7
+xlrd>=2.0,<3
+rapidfuzz>=3.12,<4
+httpx>=0.28,<1
+cryptography>=46,<49
+tzdata>=2025,<2028

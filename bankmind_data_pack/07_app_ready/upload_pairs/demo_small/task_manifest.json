@@ -1,0 +1,56 @@
+[
+  {
+    "account": "0000000000006677",
+    "currency": "CNY",
+    "start_date": "2026-10-01",
+    "end_date": "2026-10-31",
+    "bank_rows": 0,
+    "book_rows": 1,
+    "bank_file": "",
+    "book_file": "07_app_ready/upload_pairs/demo_small/6677_CNY/book.csv",
+    "balances": {
+      "account": "0000000000006677",
+      "currency": "CNY",
+      "opening_bank": "20000000.00",
+      "closing_bank": "20000000.00",
+      "opening_book": "20000000.00",
+      "closing_book": "20101860.28"
+    }
+  },
+  {
+    "account": "0000000000006688",
+    "currency": "CNY",
+    "start_date": "2026-10-01",
+    "end_date": "2026-10-31",
+    "bank_rows": 73,
+    "book_rows": 70,
+    "bank_file": "07_app_ready/upload_pairs/demo_small/6688_CNY/bank.csv",
+    "book_file": "07_app_ready/upload_pairs/demo_small/6688_CNY/book.csv",
+    "balances": {
+      "account": "0000000000006688",
+      "currency": "CNY",
+      "opening_bank": "20000000.00",
+      "closing_bank": "20855868.73",
+      "opening_book": "20000000.00",
+      "closing_book": "21453377.89"
+    }
+  },
+  {
+    "account": "0000000000006688",
+    "currency": "USD",
+    "start_date": "2026-10-01",
+    "end_date": "2026-10-31",
+    "bank_rows": 0,
+    "book_rows": 1,
+    "bank_file": "",
+    "book_file": "07_app_ready/upload_pairs/demo_small/6688_USD/book.csv",
+    "balances": {
+      "account": "0000000000006688",
+      "currency": "USD",
+      "opening_bank": "20000000.00",
+      "closing_bank": "20000000.00",
+      "opening_book": "20000000.00",
+      "closing_book": "19831092.06"
+    }
+  }
+]

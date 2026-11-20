@@ -1,0 +1,119 @@
+<view class="workspace-mode workspace-mode-{{workspaceMode}}">
+<view class="page home-page workspace-home">
+  <view class="mobile-brand">
+    <view class="brand-link"><view/><view/></view><text>BankMind</text>
+    <view class="brand-edition" wx:if="{{user}}" aria-role="button" aria-label="查看当前账号" bindtap="profile">{{user.name}} · {{user.roleLabel}} ›</view>
+  </view>
+  <view class="workspace-entrances">
+    <text class="workspace-name">{{workspaceMode === 'game' ? '游戏工作台' : '经典工作台'}}</text>
+    <button class="daylight-switch {{workspaceMode === 'classic' ? 'is-day' : ''}}" bindtap="toggleWorkspace" hover-class="daylight-pressed" aria-label="{{workspaceMode === 'game' ? '切换到经典工作台' : '切换到游戏工作台'}}">
+      <view class="daylight-track" aria-hidden="true">
+        <image class="daylight-night" mode="aspectFill" src="/assets/cinema-still.jpg"/>
+        <image class="daylight-day" mode="aspectFill" src="/assets/glasshouse-mobile.jpg"/>
+        <view class="daylight-shade"/>
+        <view class="daylight-lens">
+          <view class="daylight-moon"/>
+          <view class="daylight-sun"/>
+        </view>
+      </view>
+      <text>{{workspaceMode === 'game' ? '进经典' : '回游戏'}} ›</text>
+    </button>
+  </view>
+  <view class="notice error" wx:if="{{error}}" bindtap="load">{{error}} · 点击重试</view>
+  <bm-loading wx:if="{{loading && !dashboard}}" text="正在读取任务"/>
+  <block wx:if="{{dashboard}}">
+    <view class="classic-hero" wx:if="{{workspaceMode === 'classic'}}">
+      <image mode="aspectFill" src="/assets/glasshouse-mobile.jpg"/>
+      <view class="classic-hero-shade"/>
+      <view class="classic-hero-copy">
+        <view class="classic-hero-title">回到你的工作室。</view>
+        <text>{{user.name}}，从眼前这一件开始。</text>
+      </view>
+    </view>
+    <view class="workspace-picker-row">
+      <picker wx:if="{{tasks.length}}" range="{{tasks}}" range-key="name" value="{{activeIndex}}" bindchange="pickTask">
+        <view class="workspace-picker"><text class="muted">当前任务</text><text>{{active.name}} ▾</text></view>
+      </picker>
+      <button wx:if="{{canWork}}" class="secondary" bindtap="create">＋ 新建</button>
+      <button wx:elif="{{tasks.length}}" class="secondary" bindtap="tasks">全部任务</button>
+    </view>
+    <block wx:if="{{active && workspaceMode === 'game'}}">
+      <view class="card workspace-summary">
+        <view class="workspace-brief">
+          <view class="workspace-art"><image mode="aspectFill" src="/assets/cinema-still.jpg"/></view>
+          <view class="workspace-title">{{active.name}}</view>
+          <view class="workspace-meta">{{active.account_name}} · {{active.currency}}</view>
+          <view class="workspace-meta">{{active.start_date}} 至 {{active.end_date}}</view>
+          <text class="pill amber">{{active.statusLabel}}</text>
+          <button class="primary workspace-next" data-step="{{active.next.id}}" bindtap="go">{{active.next.name}} <text>→</text></button>
+        </view>
+        <view class="workspace-queues">
+          <view data-step="reviews" bindtap="go" aria-role="button">
+            <view>待独立复核</view><view class="queue-amount">{{active.summary.pending_matches}}<text>组</text></view>
+          </view>
+          <view data-step="cases" bindtap="go" aria-role="button">
+            <view>未关闭异常</view><view class="queue-amount">{{active.summary.open_cases}}<text>项</text></view>
+          </view>
+        </view>
+        <view class="workspace-progress">
+          <view class="row"><text>银行记录已确认</text><text>{{active.bank.matched}} / {{active.bank.valid}} 行</text></view>
+          <view class="progress"><view style="width:{{active.percent}}%"/></view>
+        </view>
+      </view>
+      <view class="row section-heading"><view class="section">对账流程</view><button class="inline-action" bindtap="tasks">全部任务 →</button></view>
+      <view class="workspace-steps">
+        <button wx:for="{{steps}}" wx:key="id" class="secondary flow-button" data-step="{{item.id}}" bindtap="go">
+          <text class="flow-symbol">{{item.symbol}}</text><text>{{item.name}}</text>
+        </button>
+      </view>
+      <view class="card">
+        <view class="card-title">记录控制总数</view>
+        <view class="workspace-counts">
+          <view class="row"><text>银行流水</text><text>有效 {{active.bank.valid}} / 原始 {{active.bank.raw}}</text></view>
+          <view class="row muted"><text>隔离 {{active.bank.quarantined}} · 排除 {{active.bank.excluded}}</text><text>未匹配 {{active.bank.unmatched}}</text></view>
+          <view class="divider"/>
+          <view class="row"><text>企业账簿</text><text>有效 {{active.book.valid}} / 原始 {{active.book.raw}}</text></view>
+          <view class="row muted"><text>隔离 {{active.book.quarantined}} · 排除 {{active.book.excluded}}</text><text>未匹配 {{active.book.unmatched}}</text></view>
+        </view>
+      </view>
+      <view class="card">
+        <view class="card-title">余额完整性</view>
+        <view class="kv"><text>银行流水</text><text>{{active.bankBalance}}</text></view>
+        <view class="kv"><text>企业账簿</text><text>{{active.bookBalance}}</text></view>
+        <button class="secondary" data-step="reports" bindtap="go">核对余额与签署条件</button>
+      </view>
+    </block>
+    <block wx:elif="{{active}}">
+      <view class="card classic-desk">
+        <view class="row"><text class="muted">当前任务</text><text class="pill">{{active.statusLabel}}</text></view>
+        <view class="classic-task-title">{{active.name}}</view>
+        <view class="muted">{{active.account_name}} · {{active.currency}}</view>
+        <view class="muted">{{active.start_date}} 至 {{active.end_date}}</view>
+        <view class="row classic-coverage"><text>银行有效行已确认</text><text>{{active.bank.matched}} / {{active.bank.valid}} 行</text></view>
+        <view class="progress"><view style="width:{{active.percent}}%"/></view>
+        <view class="row muted"><text>银行原始行 {{active.bank.raw}}</text><text>账簿原始行 {{active.book.raw}}</text></view>
+        <button class="primary" data-step="{{active.next.id}}" bindtap="go">{{active.next.name}} →</button>
+      </view>
+      <view class="row section-heading"><view class="section">工作待办</view><button class="inline-action" bindtap="tasks">全部任务 →</button></view>
+      <view class="card classic-attention">
+        <button class="classic-list-button" bindtap="allReviews"><text>匹配复核</text><text>{{dashboard.pending_matches}} 组 ›</text></button>
+        <button class="classic-list-button" bindtap="allCases"><text>异常调查</text><text>{{dashboard.open_cases}} 项 ›</text></button>
+        <button class="classic-list-button" data-step="quality" bindtap="go"><text>当前任务隔离记录</text><text>{{active.bank.quarantined + active.book.quarantined}} 行 ›</text></button>
+      </view>
+      <view class="section">对账流程</view>
+      <view class="workspace-steps classic-steps">
+        <button wx:for="{{steps}}" wx:key="id" class="secondary flow-button" data-step="{{item.id}}" bindtap="go">
+          <text class="flow-symbol">{{item.symbol}}</text><text>{{item.name}}</text>
+        </button>
+      </view>
+      <view class="card classic-totals">
+        <view class="card-title">全部授权任务</view>
+        <view class="kv"><text>累计任务</text><text>{{dashboard.task_count}} 项</text></view>
+        <view class="kv"><text>本月新建</text><text>{{dashboard.month_tasks}} 项</text></view>
+        <view class="kv"><text>整体自动覆盖率</text><text>{{dashboard.auto_coverage}}%</text></view>
+      </view>
+    </block>
+    <view wx:else class="empty">{{canWork ? '新建任务后，分别导入银行流水和企业账簿。' : '当前账号暂无授权的对账任务。'}}</view>
+  </block>
+</view>
+</view>

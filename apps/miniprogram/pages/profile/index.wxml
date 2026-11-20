@@ -1,0 +1,46 @@
+<view class="workspace-mode workspace-mode-{{workspaceMode}}">
+<view class="page">
+  <view class="title">我的</view>
+  <view class="notice error" wx:if="{{error}}">{{error}}</view>
+  <view class="profile-identity" wx:if="{{user}}">
+    <view class="profile-avatar">{{user.initial}}</view>
+    <view class="section">{{user.name}}</view>
+    <view class="muted">{{user.tenant_name}}</view>
+    <text class="pill">{{user.roleLabel}}</text>
+  </view>
+
+  <view class="section">授权账户</view>
+  <view class="card bank-account" wx:for="{{accounts}}" wx:key="id">
+    <view class="row"><text>{{item.bank}}</text><text class="pill">{{item.currency}}</text></view>
+    <view class="account-number">{{item.number_masked}}</view>
+    <view class="muted">{{item.name}}</view>
+  </view>
+
+  <view class="card" wx:if="{{user}}">
+    <view class="card-title">服务连接</view>
+    <view class="mono connection-address">{{apiBase}}</view>
+    <block wx:for="{{providers}}" wx:key="id">
+      <view class="note" wx:if="{{item.id !== 'mock'}}">
+        <view class="row">
+          <text>{{item.label}}</text>
+          <text class="pill {{item.ready ? 'success' : 'amber'}}">{{item.ready ? '已配置' : '待配置'}}</text>
+        </view>
+        <view class="muted">{{item.model || item.hint}}</view>
+        <view class="muted" wx:if="{{item.host}}">{{item.host}}</view>
+        <view wx:if="{{testResults[item.id]}}" role="status">{{testResults[item.id]}}</view>
+        <button wx:if="{{canTest && item.ready}}" class="secondary" data-id="{{item.id}}"
+          loading="{{testing === item.id}}" disabled="{{!!testing}}" bindtap="testProvider">测试连接</button>
+      </view>
+    </block>
+  </view>
+
+  <view class="card" wx:if="{{user}}">
+    <view class="card-title">企业身份</view>
+    <view class="kv"><text>用户名</text><text>{{user.username}}</text></view>
+    <view class="kv"><text>登录模式</text><text>{{mode === 'wechat' ? '微信身份' : '企业账号'}}</text></view>
+    <button wx:if="{{showWechatBinding}}" class="secondary" bindtap="bindWechat">绑定当前微信</button>
+    <button class="primary" loading="{{switching}}" disabled="{{switching}}" bindtap="switchAccount">切换账号</button>
+  </view>
+  <button wx:if="{{user}}" class="secondary danger logout-button" disabled="{{switching}}" bindtap="logout">退出登录</button>
+</view>
+</view>

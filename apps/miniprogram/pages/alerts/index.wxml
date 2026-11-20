@@ -1,0 +1,9 @@
+<view class="workspace-mode workspace-mode-{{workspaceMode}}">
+<view class="page">
+  <view class="page-title-row"><view class="title">异常调查</view><text class="page-count">{{total}}</text></view>
+  <scroll-view scroll-x class="filter-scroll"><view class="chip-list"><button class="chip {{status===''?'active':''}}" data-status="" bindtap="filter">全部</button><button class="chip {{status==='NEW'?'active':''}}" data-status="NEW" bindtap="filter">待调查</button><button class="chip {{status==='READY_REVIEW'?'active':''}}" data-status="READY_REVIEW" bindtap="filter">待复核</button><button class="chip {{status==='CLOSED'?'active':''}}" data-status="CLOSED" bindtap="filter">已关闭</button></view></scroll-view>
+  <view class="notice error" wx:if="{{error}}">{{error}}</view><bm-loading wx:if="{{loading}}" text="正在读取异常"/><view class="empty" wx:if="{{!loading && !items.length}}">没有符合筛选的异常</view>
+  <view class="card exception-card" wx:for="{{items}}" wx:key="id" data-id="{{item.id}}" bindtap="detail" aria-role="button"><view class="row"><text class="exception-kind">{{item.kindLabel}}</text><text class="pill {{item.status === 'CLOSED' ? 'success' : 'amber'}}">{{item.statusLabel}}</text></view><view class="exception-title">{{item.title}}</view><view class="task-bottom"><text>{{item.due_date || '未设置截止日'}}</text><text>调查 →</text></view></view>
+  <view class="actions" wx:if="{{total > 25}}"><button class="secondary" disabled="{{page <= 1}}" bindtap="prev">上一页</button><button class="secondary" disabled="{{page * 25 >= total}}" bindtap="next">下一页</button></view>
+</view>
+</view>

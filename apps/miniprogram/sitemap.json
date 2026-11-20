@@ -1,0 +1,1 @@
+{"desc":"财务审批页面禁止索引","rules":[{"action":"disallow","page":"*"}]}
