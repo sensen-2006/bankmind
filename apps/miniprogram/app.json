@@ -4,8 +4,6 @@
     "pages/home/index",
     "pages/tasks/index",
     "pages/work/index",
-    "pages/quality/index",
-    "pages/reports/index",
     "pages/approvals/index",
     "pages/alerts/index",
     "pages/detail/index",
@@ -14,17 +12,16 @@
   ],
   "window": {
     "navigationBarTitleText": "银账智核",
-    "navigationBarBackgroundColor": "#14252d",
-    "navigationBarTextStyle": "white",
-    "backgroundColor": "#101c22",
-    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#F6F8FA",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#F6F8FA",
     "enablePullDownRefresh": true
   },
   "tabBar": {
-    "color": "#aebeb7",
-    "selectedColor": "#dfc48b",
-    "backgroundColor": "#14252d",
-    "borderStyle": "black",
+    "color": "#6B7280",
+    "selectedColor": "#0D9488",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "white",
     "list": [
       {
         "pagePath": "pages/home/index",
@@ -56,6 +53,7 @@
   "sitemapLocation": "sitemap.json",
   "usingComponents": {
     "bm-loading": "/components/bm-loading/index",
-    "bm-help": "/components/bm-help/index"
+    "bm-help": "/components/bm-help/index",
+    "bm-theme-toggle": "/components/bm-theme-toggle/index"
   }
 }

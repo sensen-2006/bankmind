@@ -1,29 +1,51 @@
-<view class="workspace-mode workspace-mode-{{workspaceMode}}">
-<view class="page login">
-  <view class="login-art"><image src="{{workspaceMode === 'game' ? '/assets/cinema-still.jpg' : '/assets/glasshouse-mobile.jpg'}}" mode="aspectFill"/></view>
-  <view class="mobile-brand"><view class="brand-link"><view/><view/></view><text>BankMind</text></view>
-  <view class="login-form">
-    <view class="login-heading" role="heading">登录 BankMind</view>
-    <view class="notice error" wx:if="{{!available}}">{{unavailableMessage}}</view>
-    <block wx:else>
-      <view class="notice error" wx:if="{{connectionError}}">{{connectionError}}
-        <button class="inline-action login-retry" bindtap="loadOptions">重试连接</button>
+<view class="page login-page theme-{{theme}}">
+  <view class="login-hero">
+    <view class="login-brand-row">
+      <view class="login-brand-tag">
+        <view class="brand-mark"><view class="brand-mark-inner"/></view>
+        <text>银账智核</text>
       </view>
-      <view class="form-label">企业用户名</view>
-      <input data-field="username" value="{{username}}" bindinput="input" aria-label="企业用户名" disabled="{{busy}}"/>
-      <view class="form-label">登录密码</view>
-      <input data-field="password" value="{{password}}" password bindinput="input" aria-label="登录密码" disabled="{{busy}}" confirm-type="go" bindconfirm="login"/>
-      <view class="notice error" wx:if="{{error}}">{{error}}</view>
-      <button class="primary" loading="{{busy}}" disabled="{{busy}}" bindtap="login">登录工作台 <text>→</text></button>
-      <button class="secondary" wx:if="{{mode === 'wechat'}}" disabled="{{busy}}" bindtap="wechat">微信身份登录</button>
-      <view class="login-accounts" wx:if="{{accounts.length}}">
-        <view class="form-label">课程演示账户</view>
-        <view class="account-choices">
-          <button wx:for="{{accounts}}" wx:key="username" class="secondary account-choice {{username === item.username ? 'selected' : ''}}" data-username="{{item.username}}" disabled="{{busy}}" bindtap="chooseAccount">{{item.label}}</button>
-        </view>
-      </view>
-    </block>
+      <bm-theme-toggle theme="{{theme}}" compact="{{true}}" bind:change="onThemeChange"/>
+    </view>
+    <view class="title">
+      <view>让每一笔，</view>
+      <view>清晰相合。</view>
+    </view>
+    <view class="sub">企业银行对账与移动复核工作台</view>
   </view>
-  <view wx:if="{{workspaceMode === 'game'}}" class="login-credit">影像 © Blender Foundation · Spring</view>
-</view>
+
+  <view class="notice error" wx:if="{{error}}">{{error}}</view>
+
+  <view class="card">
+    <view class="form-label" style="margin-top:0">企业账号</view>
+    <input
+      data-field="username"
+      value="{{username}}"
+      placeholder="请输入企业账号"
+      placeholder-class="input-placeholder"
+      bindinput="input"
+      aria-label="企业账号"
+    />
+    <view class="form-label">密码</view>
+    <input
+      data-field="password"
+      value="{{password}}"
+      password
+      placeholder="请输入登录密码"
+      placeholder-class="input-placeholder"
+      bindinput="input"
+      aria-label="密码"
+    />
+    <button class="primary" loading="{{busy}}" disabled="{{busy}}" bindtap="login">进入工作台 →</button>
+    <button class="secondary" wx:if="{{mode === 'wechat'}}" disabled="{{busy}}" bindtap="wechat">微信身份登录</button>
+  </view>
+
+  <view class="login-note" wx:if="{{mode !== 'wechat'}}">
+    <text>企业账号登录</text>
+    <bm-help label="演示登录" text="当前使用企业账号登录。演示账号 reviewer，默认密码 BankMind@2026。"/>
+  </view>
+  <view class="login-note" wx:else>
+    <text>微信登录需先绑定企业身份</text>
+    <bm-help label="绑定企业身份" text="使用企业账号登录后，可在「我的」中绑定当前微信。授权账户与权限由企业服务器校验。"/>
+  </view>
 </view>

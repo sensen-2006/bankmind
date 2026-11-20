@@ -1,4 +1,2 @@
-@import './tokens.wxss';
-@import './base.wxss';
-@import './luminous.wxss';
-@import './workspace.wxss';
+@import './styles/tokens.wxss';
+@import './styles/common.wxss';

@@ -1,100 +1,66 @@
-const {workspacePage}=require('../../utils/workspace');
-const {request, noService} = require('../../utils/api');
+const { request } = require('../../utils/api');
+const { getTheme, syncPageTheme } = require('../../utils/theme');
 const config = require('../../config');
 
-workspacePage({
+Page({
   data: {
-    username: '',
-    password: '',
-    accounts: [],
-    quickFill: false,
-    checking: false,
-    connectionError: '',
-    available: Boolean(config.cloud || config.apiBase),
-    unavailableMessage: noService,
+    theme: 'light',
+    username: 'reviewer',
+    password: 'BankMind@2026',
     busy: false,
     error: '',
     mode: config.authMode
   },
   onLoad() {
-    if (this.data.available && wx.getStorageSync('bankmind-token')) {
-      wx.switchTab({url: '/pages/home/index'});
-    } else if (this.data.available) {
-      this.loadOptions();
+    this.setData({ theme: getTheme() });
+    if (wx.getStorageSync('bankmind-token')) {
+      wx.switchTab({ url: '/pages/home/index' });
     }
   },
-  async loadOptions() {
-    if (this.data.checking) return;
-    this.setData({checking: true, connectionError: ''});
-    try {
-      const options = await request('/auth/options', 'GET', undefined, 6500);
-      this.setData({
-        accounts: options.accounts || [],
-        quickFill: config.local && options.quick_fill === true
-      });
-    } catch (error) {
-      this.setData({connectionError: error.message});
-    } finally {
-      this.setData({checking: false});
-    }
+  onShow() {
+    syncPageTheme(this);
   },
-  chooseAccount(event) {
-    if (this.data.busy) return;
-    const username = event.currentTarget.dataset.username;
-    if (!this.data.accounts.some(account => account.username === username)) return;
-    this.setData({
-      username,
-      password: this.data.quickFill ? 'BankMind@2026' : '',
-      error: ''
-    });
+  onThemeChange(e) {
+    this.setData({ theme: e.detail.theme });
   },
-  input(event) {
-    this.setData({[event.currentTarget.dataset.field]: event.detail.value});
+  input(e) {
+    this.setData({ [e.currentTarget.dataset.field]: e.detail.value });
   },
   async login() {
-    if (!this.data.available || this.data.busy) return;
-    const username = this.data.username.trim();
-    const password = this.data.password;
-    if (!username || !password) {
-      this.setData({error: '请输入账号和密码。'});
-      return;
-    }
-    this.setData({busy: true, error: ''});
+    this.setData({ busy: true, error: '' });
     try {
-      await this.finish(await request('/auth/login', 'POST', {username, password}));
-    } catch (error) {
-      this.setData({error: error.message});
+      const result = await request('/auth/login', 'POST', {
+        username: this.data.username,
+        password: this.data.password
+      });
+      await this.finish(result);
+    } catch (e) {
+      this.setData({ error: e.message });
     } finally {
-      this.setData({busy: false});
+      this.setData({ busy: false });
     }
   },
   async finish(result) {
     wx.setStorageSync('bankmind-token', result.token);
-    try {
-      const user = await request('/me');
-      wx.setStorageSync('bankmind-user', user);
-      getApp().globalData.user = user;
-      wx.switchTab({url: '/pages/home/index'});
-    } catch (error) {
-      wx.removeStorageSync('bankmind-token');
-      wx.removeStorageSync('bankmind-user');
-      throw error;
-    }
+    const user = await request('/me');
+    wx.setStorageSync('bankmind-user', user);
+    const app = getApp();
+    if (app && app.globalData) app.globalData.user = user;
+    wx.switchTab({ url: '/pages/home/index' });
   },
   wechat() {
-    if (!this.data.available || this.data.busy) return;
-    this.setData({busy: true, error: ''});
+    this.setData({ busy: true });
     wx.login({
-      success: async result => {
+      success: async (res) => {
         try {
-          await this.finish(await request('/auth/wechat', 'POST', {code: result.code}));
-        } catch (error) {
-          this.setData({error: error.message});
+          await this.finish(await request('/auth/wechat', 'POST', { code: res.code }));
+        } catch (e) {
+          this.setData({ error: e.message });
         } finally {
-          this.setData({busy: false});
+          this.setData({ busy: false });
         }
       },
-      fail: () => this.setData({busy: false, error: '微信身份校验未完成'})
+      fail: () => this.setData({ busy: false, error: '微信身份校验未完成' })
     });
   }
 });

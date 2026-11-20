@@ -1,0 +1,10 @@
+{
+  "description": "BankMind 微信原生移动审批中心",
+  "miniprogramRoot": "./",
+  "compileType": "miniprogram",
+  "appid": "touristappid",
+  "projectname": "BankMind",
+  "libVersion": "3.8.7",
+  "setting": {"urlCheck": false,"es6": true,"enhance": true,"postcss": true,"minified": true},
+  "condition": {}
+}

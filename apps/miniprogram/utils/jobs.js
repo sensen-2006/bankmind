@@ -1,5 +1,4 @@
-const {request,key,errorText}=require('./api');
-const {upload,fsCall}=require('./files');
+const {request,upload,key,errorText}=require('./api');
 const sha256=require('./sha256');
 
 const root=id=>'/tasks/'+encodeURIComponent(id)+'/jobs';
@@ -27,6 +26,7 @@ async function submit(task,payload){
  return job;
 }
 
+const fsCall=(fs,method,params)=>new Promise((resolve,reject)=>fs[method]({...params,success:resolve,fail:()=>reject(new Error('无法读取或保存本地文件，请重新选择'))}));
 const change=(task,id,action)=>request(root(task)+'/'+id+'/'+action,'POST');
 
 async function uploadChunks(task,side,file,sheet,header,progress){

@@ -1,4 +1,1 @@
-.connection-address {
-  margin-top: 12rpx;
-  overflow-wrap: anywhere;
-}
+/* Shared design tokens live in app.wxss. */

@@ -1,0 +1,22 @@
+<view
+  class="daylight-wrap {{compact ? 'is-compact' : ''}}"
+  bindtap="toggle"
+  aria-role="switch"
+  aria-checked="{{theme === 'dark'}}"
+  aria-label="切换明亮或深色外观"
+>
+  <view class="daylight-track {{theme === 'dark' ? 'is-dark' : 'is-light'}}">
+    <view class="daylight-sky">
+      <view class="cloud cloud-1"></view>
+      <view class="cloud cloud-2"></view>
+      <view class="star star-1"></view>
+      <view class="star star-2"></view>
+      <view class="star star-3"></view>
+    </view>
+    <view class="daylight-thumb">
+      <view class="crater crater-1"></view>
+      <view class="crater crater-2"></view>
+    </view>
+  </view>
+  <text class="daylight-label">{{theme === 'dark' ? '深色' : '明亮'}}</text>
+</view>

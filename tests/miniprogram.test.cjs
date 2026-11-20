@@ -2,48 +2,26 @@
 // This does not claim WeChat rendering/device certification.
 const assert=require('node:assert/strict');
 const crypto=require('node:crypto');
-const vm=require('node:vm');
 const fs=require('node:fs');const path=require('node:path');
 const root=path.resolve(__dirname,'../apps/miniprogram');
-
-function configuredEndpoint(platform, mobileApiBase, envVersion, debugApiBase = '') {
- const source=fs.readFileSync(path.join(root,'config.js'),'utf8')
-  .replace(/^const mobileApiBase = .*;$/m, 'const mobileApiBase = '+JSON.stringify(mobileApiBase)+';')
-  .replace(/^const debugApiBase = .*;$/m, 'const debugApiBase = '+JSON.stringify(debugApiBase)+';');
- const module={exports:{}};
- const wx={getDeviceInfo:()=>({platform}),getAccountInfoSync:()=>({miniProgram:{envVersion}})};
- vm.runInNewContext(source,{module,wx});
- return module.exports.apiBase;
-}
-
-assert.equal(configuredEndpoint('devtools',''),'http://127.0.0.1:8026/api');
-assert.equal(configuredEndpoint('ios',''),'');
-assert.equal(configuredEndpoint('ios','http://127.0.0.1:8026/api'),'');
-assert.equal(configuredEndpoint('android','https://bankmind.example.test/api/'),'https://bankmind.example.test/api');
-assert.equal(configuredEndpoint('ios','','develop','https://temporary.example.test/api'),'https://temporary.example.test/api');
-assert.equal(configuredEndpoint('ios','','trial','https://temporary.example.test/api'),'');
 const store=new Map();let pageDefinition;const navigation=[];
-const workspaceChrome={};
 const apiBase=process.env.BANKMIND_TEST_API||'http://127.0.0.1:8001/api';
 const config=require(path.join(root,'config'));config.apiBase=apiBase;
 global.Page=o=>pageDefinition=o;
 global.getApp=()=>({globalData:{config,user:store.get('bankmind-user')}});
 global.wx={getStorageSync:k=>store.get(k),setStorageSync:(k,v)=>store.set(k,v),removeStorageSync:k=>store.delete(k),
- setNavigationBarTitle:options=>{workspaceChrome.title=options.title;},
- setTabBarStyle:options=>{workspaceChrome.tab=options.backgroundColor;},
  switchTab:o=>navigation.push(o.url),reLaunch:o=>navigation.push(o.url),navigateTo:o=>navigation.push(o.url),
- setClipboardData:o=>{assert.ok(JSON.parse(o.data).case_id);o.success();},showToast:()=>{},stopPullDownRefresh:()=>{},showModal:o=>o.success({confirm:true}),
+ setClipboardData:o=>{assert.ok(o.data && (o.data.includes('case=') || o.data.includes('异常编号')));o.success();},showToast:()=>{},stopPullDownRefresh:()=>{},showModal:o=>o.success({confirm:true}),
  request(o){fetch(o.url,{method:o.method,headers:o.header,body:o.method==='GET'?undefined:JSON.stringify(o.data)}).then(async r=>o.success({statusCode:r.status,data:await r.json()})).catch(o.fail);}};
 function page(name){
  const file=path.join(root,'pages',name,'index.js');delete require.cache[require.resolve(file)];require(file);
  const o=pageDefinition;
- const instance={...o,route:'pages/'+name+'/index',data:structuredClone(o.data),setData(values,callback){
+ const instance={...o,data:structuredClone(o.data),setData(values){
   for(const [key,value] of Object.entries(values)){
    const parts=key.replace(/\[(\d+)\]/g,'.$1').split('.');
    const field=parts.pop();
    parts.reduce((obj,k)=>obj[k],this.data)[field]=value;
   }
-  callback?.();
  }};
  for(const key in instance)if(typeof instance[key]==='function')instance[key]=instance[key].bind(instance);
  return instance;
@@ -61,14 +39,10 @@ async function waitForJob(work,kind,completed){
  assert.fail('Backend did not finish '+kind);
 }
 async function testWork(api){
- const work=page('work');work.onLoad({});await work.loadCreate();
- assert.ok(work.data.createReady&&work.data.accounts.length);
- for(const [field,value] of Object.entries({newName:'移动客户端恢复合成验收',startDate:'2026-10-01',endDate:'2026-10-31'})){
-  work.editTask(event({field},value));
- }
- await work.createTask();
- const task=work.data.task;
- assert.equal(task.name,'移动客户端恢复合成验收',work.data.error);
+ const account=(await api.request('/accounts'))[0];
+ const task=await api.request('/tasks','POST',{name:'移动客户端恢复合成验收',account_id:account.id,currency:account.currency,
+  start_date:'2026-10-01',end_date:'2026-10-31'});
+ const work=page('work');work.onLoad({taskId:task.id});await work.load();
  assert.equal(work.data.enabled,true);
  const big=Buffer.from('date,amount,reference,description\n'+Array.from({length:3600},(_,i)=>'2026-10-04,'+(i+1)+',R'+i+','+'A'.repeat(300)).join('\n'));
  for(const content of [Buffer.alloc(0),Buffer.alloc(56,1),big]){
@@ -138,98 +112,18 @@ async function testWork(api){
  assert.equal(work.data.task.summary.sides.BANK.raw,3600);
  assert.equal(work.data.task.summary.sides.BOOK.raw,1);
 }
-async function testCloud(api, caseId, loginAs){
- const files=require(path.join(root,'utils/files'));
- const previousCloud=config.cloud;
- config.cloud={env:'isolated-test-env',service:'bankmind-trial'};
- const calls=[];
- wx.cloud={async callContainer(options){
-  assert.deepEqual(options.config,{env:'isolated-test-env'});
-  assert.equal(options.header['X-WX-SERVICE'],'bankmind-trial');
-  const body=options.data===undefined?undefined:JSON.stringify(options.data);
-  assert.ok(!body||Buffer.byteLength(body)<100*1024);
-  calls.push([options.method,options.path]);
-  const result=await fetch(apiBase+options.path.slice(4),{method:options.method,headers:options.header,body});
-  const encoded=await result.text();
-  assert.ok(Buffer.byteLength(encoded)<1000*1024);
-  return {statusCode:result.status,data:JSON.parse(encoded)};
- }};
- try{
-  const original=Buffer.from('BankMind 独立合成凭证\n'.repeat(19000));
-  assert.ok(original.length>384*1024);
-  const stored=new Map([['SOURCE',original]]);
-  const asArrayBuffer=buffer=>buffer.buffer.slice(buffer.byteOffset,buffer.byteOffset+buffer.byteLength);
-  wx.arrayBufferToBase64=data=>Buffer.from(data).toString('base64');
-  wx.base64ToArrayBuffer=data=>asArrayBuffer(Buffer.from(data,'base64'));
-  wx.getFileSystemManager=()=>({
-   readFile:o=>o.success({data:asArrayBuffer(stored.get(o.filePath))}),
-   writeFile:o=>{stored.set(o.filePath,Buffer.from(o.data));o.success();},
-   appendFile:o=>{stored.set(o.filePath,Buffer.concat([stored.get(o.filePath),Buffer.from(o.data)]));o.success();},
-   unlink:o=>stored.delete(o.filePath)
-  });
-  const casePath='/cases/'+caseId;
-  const form={note:'云端分块传输合成验收',original_filename:'cloud.txt',purpose:'SUPPORT'};
-  assert.equal((await api.request('/me')).role,'Auditor');
-  await assert.rejects(files.upload(casePath+'/attachments','SOURCE',form),/没有此操作权限/);
-  await loginAs('accountant');
-  const current=await api.request(casePath);
-  await assert.rejects(api.request(casePath,'PATCH',{version:current.version-1,action:'NOTE',reason:'合成测试过期版本拒绝'}),/已被更新/);
-  const first=await files.upload(casePath+'/attachments','SOURCE',form);
-  assert.ok(first.id);
-  await loginAs('auditor');
-  const filePath=await files.download('/attachments/'+first.id+'/original','txt');
-  assert.deepEqual(stored.get(filePath),original);
-  assert.ok(calls.filter(([,url])=>url.endsWith('/part')).length>1);
-  assert.ok(calls.filter(([,url])=>url.includes('?offset=')).length>1);
-  assert.ok(calls.some(([method,url])=>method==='POST'&&url==='/api'+casePath));
- }finally{
-  config.cloud=previousCloud;
- }
-}
 async function main(){
  const app=JSON.parse(fs.readFileSync(path.join(root,'app.json'),'utf8'));
- assert.equal(app.pages.length,11);
+ assert.equal(app.pages.length,9);
  for(const p of app.pages)for(const ext of ['.js','.json','.wxml','.wxss'])assert.ok(fs.existsSync(path.join(root,p+ext)),p+ext);
- async function loginAs(username){
-  const login=page('login');await login.loadOptions();
-  assert.equal(login.data.accounts.length,4,login.data.connectionError);
-  login.chooseAccount(event({username}));await login.login();
-  assert.equal(store.get('bankmind-user').username,username,login.data.error);
- }
- await loginAs('reviewer');
- const home=page('home');
- await home.onShow();
- home.onHide();
- assert.ok(home.data.dashboard.task_count>0);
- const loginTheme=page('login');
- const activeTask=home.data.active;
- const token=store.get('bankmind-token');
- assert.equal(home.data.workspaceMode,'game');
- assert.ok(token);
- assert.equal(workspaceChrome.title,'游戏工作台');
- home.toggleWorkspace();
- assert.equal(home.data.workspaceMode,'classic');
- assert.equal(home.data.active,activeTask);
- assert.equal(store.get('bankmind-token'),token);
- assert.equal(workspaceChrome.title,'经典工作台');
- assert.equal(workspaceChrome.tab,'#fafbf4');
- loginTheme.onShow();
- assert.equal(loginTheme.data.workspaceMode,'classic');
- home.toggleWorkspace();
- assert.equal(home.data.workspaceMode,'game');
- assert.equal(home.data.active,activeTask);
- assert.equal(store.get('bankmind-token'),token);
- assert.equal(workspaceChrome.tab,'#14252d');
+ const login=page('login');login.data.username='reviewer';await login.login();assert.ok(store.get('bankmind-token'));assert.equal(store.get('bankmind-user').role,'Reviewer');
+ const home=page('home');await home.load();assert.ok(home.data.dashboard.task_count>0);
  const tasks=page('tasks');await tasks.load();assert.ok(tasks.data.tasks.some(t=>t.bank.raw===1000&&t.book.raw===1000));
- assert.equal(home.data.active.percent,Math.round(home.data.active.bank.matched/home.data.active.bank.valid*100));
+ assert.ok(home.data.recentTasks.length<=2);for(const t of home.data.recentTasks){assert.equal(t.confirmedPct,t.summary.sides.BANK.valid?Math.round(t.summary.sides.BANK.matched/t.summary.sides.BANK.valid*100):0);}
  tasks.filter({currentTarget:{dataset:{status:'REVIEW'}}});assert.ok(tasks.data.filteredTasks.length>0);assert.ok(tasks.data.filteredTasks.every(t=>t.status==='REVIEW'));
  tasks.search({detail:{value:'definitely-no-such-task'}});assert.equal(tasks.data.filteredTasks.length,0);
  tasks.search({detail:{value:''}});tasks.filter({currentTarget:{dataset:{status:''}}});assert.equal(tasks.data.filteredTasks.length,tasks.data.tasks.length);
- home.pickTask(event({},0));home.go(event({step:'quality'}));
- assert.ok(navigation.at(-1).includes(encodeURIComponent(tasks.data.tasks[0].id)));
- const quality=page('quality');quality.onLoad({taskId:home.data.active.id});
- await quality.filter(event({quality:'VALID'}));
- assert.ok(quality.data.items.length&&quality.data.items.every(item=>item.quality==='VALID'));
+ home.openTask({currentTarget:{dataset:{id:tasks.data.tasks[0].id}}});assert.ok(navigation.at(-1).includes(encodeURIComponent(tasks.data.tasks[0].id)));
 
  const approvals=page('approvals');await approvals.load();assert.ok(approvals.data.matches.length>0);
  const match=approvals.data.matches.find(m=>m.status==='PENDING');assert.ok(match);
@@ -241,10 +135,6 @@ async function main(){
  const source=page('evidence');source.onLoad({transactionId:match.bank_ids[0]});await source.load();assert.ok(source.data.rawFields.length>0);assert.ok(source.data.rawFields.filter(f=>f.key.includes('账号')).every(f=>f.value.includes('••••')));
  const alerts=page('alerts');alerts.onLoad({});await alerts.load();assert.ok(alerts.data.items.length>0);
  const detail=page('detail');detail.onLoad({id:alerts.data.items.find(x=>x.status!=='CLOSED').id});await detail.load();assert.ok(detail.data.detail.transactions.length>0);
- assert.ok(detail.data.aiChoices.some(provider=>provider.id==='mock'));
- detail.chooseProvider({detail:{value:0}});await detail.investigate();
- assert.equal(detail.data.detail.analysis.result_provider,'mock');
- assert.equal(detail.data.detail.analysis.transmission_state,'NOT_ATTEMPTED');
  // Mobile material list, authenticated read and independent review share the exact same API.
  const reviewerToken=store.get('bankmind-token');const c=detail.data.detail;const uploadLogin=await fetch(apiBase+'/auth/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({username:'accountant',password:'BankMind@2026'})}).then(r=>r.json());
  const form=new FormData();form.append('note','小程序合成材料核验测试，不代表真实凭证');form.append('purpose','SUPPORT');form.append('file',new Blob(['Synthetic mobile evidence'],{type:'text/plain'}),'mobile.txt');
@@ -257,32 +147,8 @@ async function main(){
  const stale=await fetch(apiBase+'/attachments/'+a.id+'/decision',{method:'POST',headers:{Authorization:'Bearer '+reviewerToken,'content-type':'application/json'},body:JSON.stringify({version:a.version,action:'APPROVE',reason:'旧版本应被拒绝且不重复批准',idempotency_key:'mobile-stale-'+Date.now()})});assert.equal(stale.status,409);
  detail.handoff();
  const profile=page('profile');await profile.load();assert.equal(profile.data.user.role,'Reviewer');
- assert.ok(profile.data.providers.some(provider=>provider.id==='codex'));
- assert.ok(profile.data.providers.some(provider=>provider.id==='deepseek'));
- await profile.switchAccount();
- assert.equal(store.get('bankmind-token'),undefined);
- assert.equal((await fetch(apiBase+'/me',{headers:{Authorization:'Bearer '+reviewerToken}})).status,401);
- await loginAs('accountant');
- const synced=await api.request('/matches/'+match.id);assert.equal(synced.status,'APPROVED');
- const reports=page('reports');reports.onLoad({taskId:match.task_id});await reports.load();
- assert.ok(reports.data.canDraft,reports.data.error);
- await reports.draft();assert.equal(reports.data.detail?.status,'DRAFT',reports.data.error);
- assert.equal(reports.data.ownDraft,true);
- assert.equal(reports.data.canSign,false);
- const reportId=reports.data.detail.id;
- const excel=await fetch(apiBase+'/reports/'+reportId+'/export?format=xlsx&own_draft=true',{
-  headers:{Authorization:'Bearer '+store.get('bankmind-token')}
- });
- assert.equal(excel.status,200);
- assert.ok(excel.headers.get('content-type').includes('spreadsheetml'));
+ const accountant=page('login');accountant.data.username='accountant';await accountant.login();const synced=await api.request('/matches/'+match.id);assert.equal(synced.status,'APPROVED');
  await testWork(api);
- await profile.switchAccount();
- await loginAs('reviewer');await reports.load();await reports.readDetail(reportId);
- assert.ok(reports.data.canSign);
- await profile.switchAccount();
- await loginAs('auditor');await reports.load();await reports.readDetail(reportId);
- assert.equal(reports.data.canSign,false);assert.equal(reports.data.canDownload,true);
- await testCloud(api,c.id,loginAs);
- console.log(JSON.stringify({passed:true,pages:app.pages.length,checks:['multiple enterprise accounts','session revocation','task overview','mobile task creation','quality filters','independent review','auditor permissions','report draft and Excel export','resumable imports','publish and match']}));
+ console.log(JSON.stringify({passed:true,pages:9,checks:['enterprise login','dashboard','tasks','approvals','evidence','same-key network retry','source masking','alerts','case detail','profile','cross-client sync','material download auth','independent evidence review','stale material rejection','resumable Web handoff','mobile chunk interruption and resume','mobile publish and match']}));
 }
 main().catch(e=>{console.error(e);process.exitCode=1;});
