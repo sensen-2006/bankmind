@@ -17,6 +17,17 @@
       </view>
       <bm-daylight-toggle theme="{{theme}}" bindchange="onThemeChange" />
     </view>
+    <view class="divider" />
+    <view class="theme-setting-row">
+      <view class="theme-setting-meta">
+        <text class="theme-setting-title">交互音效</text>
+        <text class="muted">按钮轻触、切换主题与审批提示音</text>
+      </view>
+      <view style="display: flex; align-items: center; gap: 12rpx;">
+        <button class="inline-action" style="font-size: 24rpx;" bindtap="previewSound">试听</button>
+        <switch checked="{{soundEnabled}}" color="#26b888" bindchange="toggleSound" />
+      </view>
+    </view>
   </view>
 
   <view class="section bm-enter stagger-3">授权账户</view>

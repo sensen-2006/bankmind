@@ -1,5 +1,62 @@
 <view class="page theme-{{theme}}">
-  <view class="title bm-enter stagger-1">对账任务</view>
+  <view class="page-title-row bm-enter stagger-1">
+    <view class="title">对账任务</view>
+    <button wx:if="{{canWork}}" class="primary create-task-btn" bindtap="toggleCreate">
+      {{showCreate ? '收起' : '＋ 新建任务'}}
+    </button>
+  </view>
+
+  <view wx:if="{{canWork && showCreate}}" class="card create-task-card bm-enter stagger-1">
+    <view class="card-title">新建对账任务</view>
+    <view class="form-label" style="margin-top: 8rpx;">任务名称</view>
+    <input
+      placeholder="如：2026年11月 · 基本户月度对账"
+      value="{{form.name}}"
+      data-field="name"
+      bindinput="onFormInput"
+      disabled="{{creating}}"
+    />
+
+    <view class="form-label">授权银行账户</view>
+    <picker
+      mode="selector"
+      range="{{accountLabels}}"
+      value="{{form.accountIndex}}"
+      bindchange="onAccountPick"
+      disabled="{{creating || !accounts.length}}"
+    >
+      <view class="picker-pill">
+        <text>{{accountLabels[form.accountIndex] || '暂无授权账户'}}</text>
+        <text class="muted">▾</text>
+      </view>
+    </picker>
+
+    <view class="date-range-row">
+      <view class="date-col">
+        <view class="form-label">开始日期</view>
+        <picker mode="date" value="{{form.start_date}}" data-field="start_date" bindchange="onDatePick" disabled="{{creating}}">
+          <view class="picker-pill">
+            <text>{{form.start_date}}</text>
+            <text class="muted">▾</text>
+          </view>
+        </picker>
+      </view>
+      <view class="date-col">
+        <view class="form-label">结束日期</view>
+        <picker mode="date" value="{{form.end_date}}" data-field="end_date" bindchange="onDatePick" disabled="{{creating}}">
+          <view class="picker-pill">
+            <text>{{form.end_date}}</text>
+            <text class="muted">▾</text>
+          </view>
+        </picker>
+      </view>
+    </view>
+
+    <view class="actions" style="margin-top: 22rpx;">
+      <button class="secondary" style="margin-top: 0;" disabled="{{creating}}" bindtap="toggleCreate">取消</button>
+      <button class="primary" style="margin-top: 0;" loading="{{creating}}" disabled="{{creating || !accounts.length}}" bindtap="submitCreate">创建并导入</button>
+    </view>
+  </view>
 
   <view class="search-box bm-enter stagger-1">
     <view class="search-symbol" />
@@ -21,7 +78,7 @@
   <view wx:if="{{!loading && !filteredTasks.length}}" class="empty">
     <view class="empty-symbol">≡</view>
     <view>{{tasks.length ? '没有符合筛选的任务' : '还没有对账任务'}}</view>
-    <view class="muted">{{tasks.length ? '试试其他状态或关键词。' : '请在电脑端创建任务。'}}</view>
+    <view class="muted">{{tasks.length ? '试试其他状态或关键词。' : (canWork ? '点击右上角「＋ 新建任务」即可开始对账。' : '请在电脑端创建任务。')}}</view>
   </view>
 
   <view class="list-count" wx:if="{{!loading}}">{{filteredTasks.length}} 个任务</view>

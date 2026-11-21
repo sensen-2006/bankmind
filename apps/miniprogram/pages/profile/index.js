@@ -1,11 +1,13 @@
 const { request, requireAuth, failure } = require('../../utils/api');
 const { label } = require('../../utils/labels');
 const { getTheme, syncPageTheme, haptic } = require('../../utils/theme');
+const { isSoundEnabled, setSoundEnabled, playSound } = require('../../utils/sound');
 const config = require('../../config');
 
 Page({
   data: {
     theme: getTheme(),
+    soundEnabled: isSoundEnabled(),
     user: null,
     accounts: [],
     error: '',
@@ -14,10 +16,21 @@ Page({
   },
   onShow() {
     syncPageTheme(this);
+    this.setData({ soundEnabled: isSoundEnabled() });
     if (requireAuth()) this.load();
   },
   onThemeChange(e) {
     this.setData({ theme: e.detail.theme });
+  },
+  toggleSound(e) {
+    haptic();
+    const enabled = setSoundEnabled(e.detail.value);
+    this.setData({ soundEnabled: enabled });
+    if (enabled) playSound('success', true);
+  },
+  previewSound() {
+    haptic();
+    playSound('success', true);
   },
   onPullDownRefresh() {
     this.load().finally(() => wx.stopPullDownRefresh());
@@ -40,6 +53,7 @@ Page({
   },
   logout() {
     haptic();
+    playSound('click');
     wx.showModal({
       title: '退出企业工作空间',
       content: '退出后需要重新登录企业账号。',
@@ -54,16 +68,22 @@ Page({
   },
   bindWechat() {
     haptic();
+    playSound('click');
     wx.login({
       success: async (r) => {
         try {
           await request('/auth/wechat/bind', 'POST', { code: r.code });
+          playSound('success');
           wx.showToast({ title: '微信身份已绑定' });
         } catch (e) {
+          playSound('error');
           failure(e);
         }
       },
-      fail: () => failure(new Error('微信登录未完成'))
+      fail: () => {
+        playSound('error');
+        failure(new Error('微信登录未完成'));
+      }
     });
   }
 });

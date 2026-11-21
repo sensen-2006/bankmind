@@ -1,5 +1,6 @@
 const { request } = require('../../utils/api');
 const { getTheme, syncPageTheme, haptic } = require('../../utils/theme');
+const { playSound } = require('../../utils/sound');
 const config = require('../../config');
 
 Page({
@@ -38,8 +39,10 @@ Page({
     this.setData({ busy: true, error: '' });
     try {
       const result = await request('/auth/login', 'POST', { username, password });
+      playSound('success');
       await this.finish(result);
     } catch (e) {
+      playSound('error');
       this.setData({ error: e.message });
     } finally {
       this.setData({ busy: false });

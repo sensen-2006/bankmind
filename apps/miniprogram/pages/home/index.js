@@ -1,6 +1,7 @@
 const { label } = require('../../utils/labels');
 const { request, requireAuth } = require('../../utils/api');
 const { getTheme, syncPageTheme, haptic } = require('../../utils/theme');
+const { playSound } = require('../../utils/sound');
 
 function buildTaskMetrics(t) {
   const valid = (t.summary && t.summary.sides && t.summary.sides.BANK && t.summary.sides.BANK.valid) || 0;
@@ -62,18 +63,22 @@ Page({
   },
   openTask(e) {
     haptic();
+    playSound('click');
     wx.navigateTo({ url: '/pages/evidence/index?taskId=' + e.currentTarget.dataset.id });
   },
   tasks() {
     haptic();
+    playSound('click');
     wx.switchTab({ url: '/pages/tasks/index' });
   },
   approvals() {
     haptic();
+    playSound('click');
     wx.switchTab({ url: '/pages/approvals/index' });
   },
   alerts() {
     haptic();
+    playSound('click');
     wx.navigateTo({ url: '/pages/alerts/index' });
   }
 });

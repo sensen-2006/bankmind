@@ -2,6 +2,7 @@ const { request, requireAuth, failure, approve } = require('../../utils/api');
 const { label, shortId } = require('../../utils/labels');
 const { formatMoney } = require('../../utils/money');
 const { getTheme, syncPageTheme, haptic } = require('../../utils/theme');
+const { playSound } = require('../../utils/sound');
 const config = require('../../config');
 
 Page({
@@ -239,6 +240,7 @@ Page({
     try {
       await approve('/attachments/' + a.id + '/decision', a.version, action, finalReason);
       haptic();
+      playSound('success');
       wx.showToast({ title: '材料复核已同步' });
     } catch (e) {
       failure(e);
@@ -279,6 +281,7 @@ Page({
             : ''
       });
       haptic();
+      playSound('success');
       wx.showToast({ title: '处理已保存' });
       await this.load(true);
     } catch (e) {
@@ -300,6 +303,7 @@ Page({
         try {
           await approve('/cases/' + this.data.id + '/decision', this.data.detail.version, action, this.data.reason);
           haptic();
+          playSound('success');
           wx.showToast({ title: '审批已同步' });
           await this.load(true);
         } catch (e) {

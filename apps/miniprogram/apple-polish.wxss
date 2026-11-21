@@ -104,10 +104,57 @@ page {
 /* Fix WeChat style:v2 default 184px button width blowout */
 .chip,
 .inline-action,
-.copy-chip {
+.copy-chip,
+.create-task-btn {
   width: auto !important;
   min-width: 0 !important;
   margin: 0 !important;
+}
+
+.create-task-btn {
+  padding: 14rpx 26rpx !important;
+  min-height: 70rpx !important;
+  font-size: 25rpx !important;
+  border-radius: 999rpx !important;
+  flex-shrink: 0;
+}
+
+.create-task-card picker {
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+  min-height: 0 !important;
+}
+
+.picker-pill {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+  padding: 20rpx 24rpx;
+  min-height: 84rpx;
+  border-radius: 22rpx;
+  background: rgba(255, 255, 255, 0.84);
+  border: 1rpx solid rgba(19, 32, 29, 0.11);
+  color: #13201d;
+  font-size: 26rpx;
+  box-sizing: border-box;
+}
+
+.theme-dark .picker-pill {
+  background: #0f2028 !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  color: #f3eedc !important;
+}
+
+.date-range-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16rpx;
+}
+
+.date-col {
+  min-width: 0;
 }
 
 /* 2. Frosted Glass Cards & Surface Hierarchy (Light Mode) */

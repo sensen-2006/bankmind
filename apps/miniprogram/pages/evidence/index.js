@@ -2,6 +2,7 @@ const { request, requireAuth, failure, approve } = require('../../utils/api');
 const { label, shortId } = require('../../utils/labels');
 const { formatMoney } = require('../../utils/money');
 const { getTheme, syncPageTheme, haptic } = require('../../utils/theme');
+const { playSound } = require('../../utils/sound');
 
 Page({
   data: {
@@ -124,6 +125,7 @@ Page({
         try {
           await approve('/matches/' + this.data.id + '/decision', this.data.match.version, action, this.data.reason);
           haptic();
+          playSound('success');
           wx.showToast({ title: '已同步审批结果' });
           await this.load(true);
         } catch (e) {
