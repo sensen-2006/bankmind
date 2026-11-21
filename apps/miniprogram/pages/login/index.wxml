@@ -15,9 +15,9 @@
 
   <view class="login-form bm-enter stagger-2">
     <view class="form-label">企业账号</view>
-    <input data-field="username" value="{{username}}" bindinput="input" aria-label="企业账号" />
+    <input data-field="username" value="{{username}}" placeholder="请输入企业账号（如 reviewer）" bindinput="input" aria-label="企业账号" />
     <view class="form-label">密码</view>
-    <input data-field="password" value="{{password}}" password bindinput="input" aria-label="密码" />
+    <input data-field="password" value="{{password}}" password placeholder="请输入账号密码" bindinput="input" aria-label="密码" />
     <button class="primary" loading="{{busy}}" disabled="{{busy}}" bindtap="login">
       <text>进入工作空间</text>
       <text>→</text>
@@ -27,7 +27,7 @@
 
   <view class="login-note bm-enter stagger-3" wx:if="{{mode !== 'wechat'}}">
     <text>企业账号登录</text>
-    <bm-help label="演示登录" text="当前使用企业账号登录。演示账号 reviewer，默认密码 BankMind@2026。" />
+    <bm-help label="登录说明" text="请使用企业管理员分配的体验账号与密码登录（如 reviewer / accountant / auditor）。" />
   </view>
   <view class="login-note bm-enter stagger-3" wx:else>
     <text>微信登录需先绑定企业身份</text>

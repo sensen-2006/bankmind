@@ -6,7 +6,7 @@ Page({
   data: {
     theme: getTheme(),
     username: 'reviewer',
-    password: 'BankMind@2026',
+    password: '',
     busy: false,
     error: '',
     mode: config.authMode
