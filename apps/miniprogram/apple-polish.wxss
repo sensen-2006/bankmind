@@ -222,7 +222,7 @@ page {
   padding: 22rpx 28rpx !important;
   line-height: 1.45 !important;
   min-height: 88rpx !important;
-  width: 100%;
+  width: 100% !important;
   margin: 22rpx 0 0 !important;
   display: flex;
   align-items: center;
@@ -975,9 +975,9 @@ picker {
   background: rgba(255, 255, 255, 0.65) !important;
 }
 
-/* 7. Login Page (Seamless Nav Integration, Glass Form, No Forced Scroll) */
+/* 7. Login Page (Seamless Nav Integration, Glass Form, Full Viewport Backdrop) */
 .page.login {
-  min-height: 100%;
+  min-height: 100vh;
   background-color: #f3f7f6 !important;
   background-image:
     radial-gradient(circle at 18% 12%, rgba(114, 224, 187, 0.32) 0%, transparent 48%),
