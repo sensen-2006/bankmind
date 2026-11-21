@@ -1036,6 +1036,23 @@ picker {
   border-color: rgba(19, 32, 29, 0.12) !important;
 }
 
+.password-field {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.password-field input {
+  flex: 1;
+  min-width: 0;
+}
+
+.pwd-toggle {
+  padding: 0 14rpx !important;
+  flex-shrink: 0;
+  font-size: 24rpx !important;
+}
+
 .login-note {
   display: flex;
   align-items: center;

@@ -7,6 +7,7 @@ Page({
     theme: getTheme(),
     username: 'reviewer',
     password: '',
+    showPassword: false,
     busy: false,
     error: '',
     mode: config.authMode
@@ -23,14 +24,20 @@ Page({
   input(e) {
     this.setData({ [e.currentTarget.dataset.field]: e.detail.value });
   },
+  togglePassword() {
+    this.setData({ showPassword: !this.data.showPassword });
+  },
   async login() {
     haptic();
+    const username = (this.data.username || '').trim();
+    const password = this.data.password || '';
+    if (!username || !password) {
+      this.setData({ error: '请输入企业账号和密码' });
+      return;
+    }
     this.setData({ busy: true, error: '' });
     try {
-      const result = await request('/auth/login', 'POST', {
-        username: this.data.username,
-        password: this.data.password
-      });
+      const result = await request('/auth/login', 'POST', { username, password });
       await this.finish(result);
     } catch (e) {
       this.setData({ error: e.message });
