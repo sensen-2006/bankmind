@@ -1,33 +1,32 @@
 <view class="page approvals-page theme-{{theme}}">
-  <view class="page-title-row">
-    <view class="title-compact">复核待办</view>
-    <bm-help label="独立复核" text="本人提交的事项须由另一位授权人员复核。处理前请核对交易、匹配依据和材料。"/>
+  <view class="page-title-row bm-enter stagger-1">
+    <view class="title">待复核</view>
+    <bm-help label="独立复核" text="本人提交的事项须由另一位授权人员复核。处理前请核对交易、匹配依据和材料。" />
   </view>
 
-  <view class="approval-summary" wx:if="{{!loading || matches.length || cases.length}}">
-    <view class="approval-summary-item">
+  <view class="approval-summary bm-enter stagger-2" wx:if="{{!loading}}">
+    <view>
       <view class="value">{{matchTotal}}</view>
-      <view class="muted">匹配待确认</view>
+      <view class="muted">匹配确认</view>
     </view>
-    <view class="approval-summary-item">
+    <view>
       <view class="value">{{cases.length}}</view>
-      <view class="muted">异常待审批</view>
+      <view class="muted">异常审批</view>
     </view>
   </view>
 
   <view class="notice" wx:if="{{truncated}}">当前展示前 {{matches.length}} 条（共 {{matchTotal}} 条），更多请前往电脑端处理。</view>
-  <view class="notice error" wx:if="{{error}}" bindtap="load">{{error}} · 轻触重试</view>
-  <bm-loading wx:if="{{loading && !matches.length && !cases.length}}" text="正在同步待办"/>
+  <view class="notice error" wx:if="{{error}}">{{error}}</view>
+  <bm-loading wx:if="{{loading}}" text="正在同步待办" />
 
   <view class="empty" wx:if="{{!loading && !matches.length && !cases.length}}">
     <view class="empty-check">✓</view>
-    <view>当前没有待复核事项</view>
-    <view class="muted">所有待办均已处理完成</view>
+    <view>暂时没有待办</view>
   </view>
 
-  <view class="section" wx:if="{{matches.length}}">匹配确认</view>
+  <view class="section bm-enter stagger-3" wx:if="{{matches.length}}">匹配确认</view>
   <view
-    class="card review-card"
+    class="card review-card tappable bm-enter stagger-3"
     wx:for="{{matches}}"
     wx:key="id"
     data-id="{{item.id}}"
@@ -35,27 +34,34 @@
     aria-role="button"
   >
     <view class="row">
-      <view class="task-name">{{item.bankFirst.counterparty || '未提供对方'}}</view>
-      <text class="pill amber">{{item.statusLabel}}</text>
+      <view class="card-title">{{item.bankFirst.counterparty || '未提供对方'}}</view>
+      <view class="bento-arrow-pill">↗</view>
     </view>
-    <view class="review-amount">{{item.displayAmount}}</view>
-    <view class="muted">{{item.bankFirst.date}} · {{item.methodLabel}}</view>
+    <view class="row" style="margin-top: 10rpx;">
+      <text class="pill amber">{{item.statusLabel}}</text>
+      <text class="muted">{{item.methodLabel}}</text>
+    </view>
+    <view class="review-amount">{{item.displayAmount}}<text>{{item.bankFirst.currency}}</text></view>
+    <view class="muted">{{item.bankFirst.date}}</view>
     <view class="task-bottom">
-      <text>{{item.bank.length}} 笔银行 ↔ {{item.book.length}} 笔企业账簿</text>
+      <text>{{item.bank.length}} 银行流水 ↔ {{item.book.length}} 企业账簿</text>
       <text>核对证据 →</text>
     </view>
   </view>
 
-  <view class="section" wx:if="{{cases.length}}">异常审批</view>
+  <view class="section bm-enter stagger-4" wx:if="{{cases.length}}">异常审批</view>
   <view
-    class="card exception-card"
+    class="card exception-card tappable bm-enter stagger-4"
     wx:for="{{cases}}"
     wx:key="id"
     data-id="{{item.id}}"
     bindtap="detail"
     aria-role="button"
   >
-    <view class="card-title" style="margin-bottom:0">{{item.title}}</view>
+    <view class="row">
+      <view class="card-title">{{item.title}}</view>
+      <view class="bento-arrow-pill">↗</view>
+    </view>
     <view class="task-bottom">
       <text>待主管复核</text>
       <text>查看依据 →</text>

@@ -1,20 +1,17 @@
 const { request, requireAuth } = require('../../utils/api');
 const { label } = require('../../utils/labels');
 const { formatMoney } = require('../../utils/money');
-const { getTheme, syncPageTheme } = require('../../utils/theme');
+const { getTheme, syncPageTheme, haptic } = require('../../utils/theme');
 
 Page({
   data: {
-    theme: 'light',
+    theme: getTheme(),
     matches: [],
     cases: [],
     matchTotal: 0,
     truncated: false,
     loading: true,
     error: ''
-  },
-  onLoad() {
-    this.setData({ theme: getTheme() });
   },
   onShow() {
     syncPageTheme(this);
@@ -39,17 +36,17 @@ Page({
       const total = d.match_total || d.matches.length;
       this.setData({
         matches: d.matches.map((m) => {
-          const bankFirst = m.bank[0] || {};
+          const bankFirst = (m.bank && m.bank[0]) || {};
           return {
             ...m,
             statusLabel: label(m.status),
             methodLabel: label(m.method),
             bankFirst,
-            bookFirst: m.book[0],
-            displayAmount: formatMoney(bankFirst.amount, bankFirst.currency)
+            bookFirst: (m.book && m.book[0]) || {},
+            displayAmount: formatMoney(bankFirst.amount, bankFirst.currency || 'CNY')
           };
         }),
-        cases: d.cases,
+        cases: d.cases || [],
         matchTotal: total,
         truncated: total > d.matches.length,
         error: ''
@@ -61,9 +58,11 @@ Page({
     }
   },
   match(e) {
-    wx.navigateTo({ url: '/pages/evidence/index?id=' + encodeURIComponent(e.currentTarget.dataset.id) });
+    haptic();
+    wx.navigateTo({ url: '/pages/evidence/index?id=' + e.currentTarget.dataset.id });
   },
   detail(e) {
-    wx.navigateTo({ url: '/pages/detail/index?id=' + encodeURIComponent(e.currentTarget.dataset.id) });
+    haptic();
+    wx.navigateTo({ url: '/pages/detail/index?id=' + e.currentTarget.dataset.id });
   }
 });

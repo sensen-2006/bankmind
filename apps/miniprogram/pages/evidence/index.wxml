@@ -1,20 +1,21 @@
 <view class="page theme-{{theme}}">
-  <view class="notice error" wx:if="{{error}}" bindtap="load">{{error}} · 轻触重试</view>
-  <bm-loading wx:if="{{loading && !transaction && !match && !items.length}}" text="正在读取证据"/>
+  <view class="title bm-enter stagger-1">匹配证据</view>
+  <view class="notice error" wx:if="{{error}}">{{error}}</view>
+  <bm-loading wx:if="{{loading}}" text="正在读取证据" />
 
   <block wx:if="{{transaction}}">
-    <view class="card">
+    <view class="card bm-enter stagger-1">
       <view class="row">
         <text class="pill">{{transaction.side === 'BANK' ? '银行流水' : '企业账簿'}}</text>
         <text class="money">{{transaction.displayAmount}}</text>
       </view>
-      <view class="card-heading">{{transaction.source.filename}}</view>
-      <view class="muted" style="margin-top:6rpx">{{transaction.source.sheet || 'CSV'}} · 原始第 {{transaction.row_no}} 行</view>
-      <view class="id-chip" data-value="{{transaction.source.sha256}}" bindtap="copyText">
-        <text>文件校验 {{transaction.shortSha}}</text>
-        <text class="id-chip-copy">复制</text>
+      <view class="card-headline">{{transaction.source.filename}}</view>
+      <view class="muted" style="margin-top: 8rpx;">{{transaction.source.sheet || 'CSV'}} · 原始第 {{transaction.row_no}} 行</view>
+      <view class="copy-row tappable" data-value="{{transaction.source.sha256}}" bindtap="copyText" aria-role="button">
+        <text class="mono">SHA256 {{transaction.shortHash}}</text>
+        <text class="copy-tag">轻触复制</text>
       </view>
-      <view class="divider"/>
+      <view class="divider" />
       <view class="kv" wx:for="{{rawFields}}" wx:key="key">
         <text>{{item.key}}</text>
         <text>{{item.value || '（空）'}}</text>
@@ -23,12 +24,11 @@
   </block>
 
   <block wx:if="{{match}}">
-    <view class="card">
+    <view class="card bm-enter stagger-1">
       <view class="row">
         <text class="pill">{{match.methodLabel}}</text>
         <text class="pill {{match.status === 'APPROVED' || match.status === 'DETERMINISTIC' ? 'success' : 'amber'}}">{{match.statusLabel}}</text>
       </view>
-
       <view class="match-relationship">
         <view>
           <view class="value">{{match.bank.length}}</view>
@@ -40,62 +40,55 @@
           <view class="muted">企业账簿</view>
         </view>
       </view>
-
       <view class="evidence-metrics">
-        <view class="evidence-metric-box">
+        <view>
           <view class="metric-value">{{match.evidence.amount_delta}}</view>
-          <view class="muted" style="margin-top:6rpx">金额差</view>
+          <view class="muted" style="margin-top: 6rpx;">金额差</view>
         </view>
-        <view class="evidence-metric-box">
+        <view>
           <view class="metric-value">{{match.evidence.date_delta_days}} 天</view>
-          <view class="muted" style="margin-top:6rpx">日期差</view>
+          <view class="muted" style="margin-top: 6rpx;">日期差</view>
         </view>
-        <view class="evidence-metric-box">
+        <view>
           <view class="metric-value">{{match.score}}</view>
           <view class="metric-label-row">
             <text class="muted">规则评分</text>
-            <bm-help label="规则评分" text="评分来自匹配规则，不是统计概率。确认前请核对原始交易和匹配依据。"/>
+            <bm-help label="规则评分" text="评分来自匹配规则，不是统计概率。确认前请核对原始交易和匹配依据。" />
           </view>
         </view>
       </view>
-
-      <view class="id-chip" data-value="{{match.id}}" bindtap="copyText">
-        <text>匹配编号 {{match.shortId}} · v{{match.version}}</text>
-        <text class="id-chip-copy">复制</text>
+      <view class="copy-row tappable" data-value="{{match.id}}" bindtap="copyText" aria-role="button">
+        <text class="mono">匹配 {{match.shortId}} · v{{match.version}}</text>
+        <text class="copy-tag">轻触复制</text>
       </view>
-      <view class="note">{{match.evidence.predicates}}</view>
+      <view class="note" wx:if="{{match.evidence.predicates}}">{{match.evidence.predicates}}</view>
     </view>
 
-    <view class="section">银行流水（{{match.bank.length}} 笔）</view>
-    <view class="card record-card" wx:for="{{match.bank}}" wx:key="id">
+    <view class="section bm-enter stagger-2">银行流水（{{match.bank.length}} 笔）</view>
+    <view class="card record-card bm-enter stagger-2" wx:for="{{match.bank}}" wx:key="id">
       <view class="row">
-        <text class="task-name">{{item.counterparty || '未提供'}}</text>
+        <text style="font-weight: 600;">{{item.counterparty || '未提供'}}</text>
         <text class="money">{{item.displayAmount}}</text>
       </view>
       <view class="kv"><text>日期</text><text>{{item.date}}</text></view>
       <view class="kv"><text>摘要</text><text>{{item.description}}</text></view>
-      <view class="evidence-id" data-id="{{item.id}}" bindtap="source">查看原始第 {{item.row_no}} 行 →</view>
+      <view class="evidence-id tappable" data-id="{{item.id}}" bindtap="source">查看原始第 {{item.row_no}} 行 →</view>
     </view>
 
-    <view class="section">企业账簿（{{match.book.length}} 笔）</view>
-    <view class="card record-card book-record" wx:for="{{match.book}}" wx:key="id">
+    <view class="section bm-enter stagger-3">企业账簿（{{match.book.length}} 笔）</view>
+    <view class="card record-card book-record bm-enter stagger-3" wx:for="{{match.book}}" wx:key="id">
       <view class="row">
-        <text class="task-name">{{item.counterparty || '未提供'}}</text>
+        <text style="font-weight: 600;">{{item.counterparty || '未提供'}}</text>
         <text class="money">{{item.displayAmount}}</text>
       </view>
       <view class="kv"><text>日期</text><text>{{item.date}}</text></view>
       <view class="kv"><text>摘要</text><text>{{item.description}}</text></view>
-      <view class="evidence-id" data-id="{{item.id}}" bindtap="source">查看原始第 {{item.row_no}} 行 →</view>
+      <view class="evidence-id tappable" data-id="{{item.id}}" bindtap="source">查看原始第 {{item.row_no}} 行 →</view>
     </view>
 
-    <view class="card" wx:if="{{canApprove}}">
+    <view class="card bm-enter stagger-4" wx:if="{{canApprove}}">
       <view class="card-title">独立复核意见</view>
-      <textarea
-        placeholder="至少4字，写明复核依据"
-        placeholder-class="input-placeholder"
-        value="{{reason}}"
-        bindinput="input"
-      />
+      <textarea placeholder="至少4字，写明复核依据" value="{{reason}}" bindinput="input" />
       <button class="primary" disabled="{{busy}}" loading="{{busy}}" data-action="APPROVE" bindtap="decide">{{match.status === 'REVERSAL_PENDING' ? '批准撤销' : '确认匹配'}}</button>
       <view class="actions">
         <button class="secondary danger" disabled="{{busy}}" data-action="REJECT" bindtap="decide">拒绝</button>
@@ -106,19 +99,26 @@
   </block>
 
   <block wx:if="{{taskId && !id}}">
-    <view class="empty" wx:if="{{!loading && !items.length}}">
-      <view class="empty-symbol">≡</view>
-      <view>尚无匹配结果</view>
-      <view class="muted">请先在电脑端或数据导入页完成导入并执行匹配。</view>
-    </view>
-    <view class="card" wx:for="{{items}}" wx:key="id" data-id="{{item.id}}" bindtap="open">
+    <view class="empty" wx:if="{{!loading && !items.length}}">尚无匹配结果，请先在电脑端完成导入和执行。</view>
+    <view
+      class="card tappable bm-enter stagger-2"
+      wx:for="{{items}}"
+      wx:key="id"
+      data-id="{{item.id}}"
+      bindtap="open"
+      aria-role="button"
+    >
       <view class="row">
-        <text class="task-name">{{item.first.counterparty || '未提供'}}</text>
-        <text class="pill {{item.status === 'APPROVED' || item.status === 'DETERMINISTIC' ? 'success' : 'amber'}}">{{item.statusLabel}}</text>
+        <text class="card-title">{{item.first.counterparty || '未提供对方'}}</text>
+        <view class="bento-arrow-pill">↗</view>
       </view>
-      <view class="review-amount">{{item.displayAmount}}</view>
+      <view class="row" style="margin-top: 10rpx;">
+        <text class="pill">{{item.statusLabel}}</text>
+        <text class="muted">{{item.methodLabel}}</text>
+      </view>
+      <view class="review-amount" style="margin-top: 18rpx;">{{item.displayAmount}}</view>
       <view class="task-bottom">
-        <text>{{item.methodLabel}} · {{item.book.length}} 笔企业账簿</text>
+        <text>{{item.book.length}} 笔企业账簿记录</text>
         <text>核对证据 →</text>
       </view>
     </view>

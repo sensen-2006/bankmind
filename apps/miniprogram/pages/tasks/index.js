@@ -1,10 +1,10 @@
 const { request, requireAuth } = require('../../utils/api');
 const { label } = require('../../utils/labels');
-const { getTheme, syncPageTheme } = require('../../utils/theme');
+const { getTheme, syncPageTheme, haptic } = require('../../utils/theme');
 
 Page({
   data: {
-    theme: 'light',
+    theme: getTheme(),
     canWork: false,
     tasks: [],
     filteredTasks: [],
@@ -31,15 +31,21 @@ Page({
       const [tasks, user] = await Promise.all([request('/tasks'), request('/me')]);
       this.setData({
         canWork: ['Admin', 'Accountant'].includes(user.role),
-        tasks: tasks.map((t) => ({
-          ...t,
-          statusLabel: label(t.status),
-          bank: t.summary.sides.BANK,
-          book: t.summary.sides.BOOK,
-          confirmedPct: t.summary.sides.BANK.valid
-            ? Math.round((t.summary.sides.BANK.matched / t.summary.sides.BANK.valid) * 100)
-            : 0
-        })),
+        tasks: tasks.map((t) => {
+          const valid = t.summary.sides.BANK.valid || 0;
+          const matched = t.summary.sides.BANK.matched || 0;
+          const pending = t.summary.pending_matches || 0;
+          const confirmedPct = valid ? Math.min(100, Math.round((matched / valid) * 100)) : 0;
+          const pendingPct = valid ? Math.min(100 - confirmedPct, Math.round((pending / valid) * 100)) : 0;
+          return {
+            ...t,
+            statusLabel: label(t.status),
+            bank: t.summary.sides.BANK,
+            book: t.summary.sides.BOOK,
+            confirmedPct,
+            pendingPct
+          };
+        }),
         error: ''
       });
       this.applyFilters();
@@ -50,6 +56,7 @@ Page({
     }
   },
   filter(e) {
+    haptic();
     this.setData({ status: e.currentTarget.dataset.status });
     this.applyFilters();
   },
@@ -68,12 +75,15 @@ Page({
     });
   },
   openWork(e) {
+    haptic();
     wx.navigateTo({ url: '/pages/work/index?taskId=' + encodeURIComponent(e.currentTarget.dataset.id) });
   },
   matches(e) {
+    haptic();
     wx.navigateTo({ url: '/pages/evidence/index?taskId=' + encodeURIComponent(e.currentTarget.dataset.id) });
   },
   alerts(e) {
+    haptic();
     wx.navigateTo({ url: '/pages/alerts/index?taskId=' + encodeURIComponent(e.currentTarget.dataset.id) });
   }
 });

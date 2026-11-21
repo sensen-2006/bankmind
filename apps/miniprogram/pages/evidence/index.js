@@ -1,11 +1,11 @@
 const { request, requireAuth, failure, approve } = require('../../utils/api');
-const { label } = require('../../utils/labels');
+const { label, shortId } = require('../../utils/labels');
 const { formatMoney } = require('../../utils/money');
-const { getTheme, syncPageTheme, shortId } = require('../../utils/theme');
+const { getTheme, syncPageTheme, haptic } = require('../../utils/theme');
 
 Page({
   data: {
-    theme: 'light',
+    theme: getTheme(),
     id: '',
     taskId: '',
     transactionId: '',
@@ -22,19 +22,11 @@ Page({
     canApprove: false
   },
   onLoad(q) {
-    this.setData({
-      theme: getTheme(),
-      id: q.id || '',
-      taskId: q.taskId || '',
-      transactionId: q.transactionId || ''
-    });
+    this.setData({ id: q.id || '', taskId: q.taskId || '', transactionId: q.transactionId || '' });
   },
   onShow() {
     syncPageTheme(this);
-    if (requireAuth()) {
-      const hasData = Boolean(this.data.match || this.data.transaction || this.data.items.length);
-      this.load(hasData);
-    }
+    if (requireAuth()) this.load(!!(this.data.match || this.data.transaction || this.data.items.length));
   },
   onPullDownRefresh() {
     this.load(true).finally(() => wx.stopPullDownRefresh());
@@ -43,23 +35,23 @@ Page({
     if (!quiet) this.setData({ loading: true });
     try {
       if (this.data.transactionId) {
-        const t = await request('/transactions/' + encodeURIComponent(this.data.transactionId));
+        const t = await request('/transactions/' + this.data.transactionId);
         this.setData({
           transaction: {
             ...t,
-            shortSha: shortId(t.source && t.source.sha256),
+            shortHash: shortId(t.source && t.source.sha256),
             displayAmount: formatMoney(t.amount, t.currency)
           },
           rawFields: Object.keys(t.raw || {}).map((key) => ({ key, value: t.raw[key] }))
         });
       } else if (this.data.id) {
-        const [m, u] = await Promise.all([request('/matches/' + encodeURIComponent(this.data.id)), request('/me')]);
+        const [m, u] = await Promise.all([request('/matches/' + this.data.id), request('/me')]);
         this.setData({
           match: {
             ...m,
             shortId: shortId(m.id),
-            bank: m.bank.map((t) => ({ ...t, displayAmount: formatMoney(t.amount, t.currency) })),
-            book: m.book.map((t) => ({ ...t, displayAmount: formatMoney(t.amount, t.currency) })),
+            bank: (m.bank || []).map((t) => ({ ...t, displayAmount: formatMoney(t.amount, t.currency) })),
+            book: (m.book || []).map((t) => ({ ...t, displayAmount: formatMoney(t.amount, t.currency) })),
             statusLabel: label(m.status),
             methodLabel: label(m.method)
           },
@@ -70,16 +62,16 @@ Page({
             ['PENDING', 'DETERMINISTIC', 'REVERSAL_PENDING'].includes(m.status)
         });
       } else if (this.data.taskId) {
-        const d = await request('/tasks/' + encodeURIComponent(this.data.taskId) + '/matches?page=' + this.data.page);
+        const d = await request('/tasks/' + this.data.taskId + '/matches?page=' + this.data.page);
         this.setData({
-          items: d.items.map((m) => {
-            const first = m.bank[0] || {};
+          items: (d.items || []).map((m) => {
+            const first = (m.bank && m.bank[0]) || {};
             return {
               ...m,
               statusLabel: label(m.status),
               methodLabel: label(m.method),
               first,
-              displayAmount: formatMoney(first.amount, first.currency)
+              displayAmount: formatMoney(first.amount, first.currency || 'CNY')
             };
           }),
           total: d.total
@@ -95,16 +87,19 @@ Page({
   copyText(e) {
     const value = e.currentTarget.dataset.value;
     if (!value) return;
+    haptic();
     wx.setClipboardData({
       data: String(value),
-      success: () => wx.showToast({ title: '已复制', icon: 'none' })
+      success: () => wx.showToast({ title: '已复制到剪贴板', icon: 'none' })
     });
   },
   open(e) {
-    wx.navigateTo({ url: '/pages/evidence/index?id=' + encodeURIComponent(e.currentTarget.dataset.id) });
+    haptic();
+    wx.navigateTo({ url: '/pages/evidence/index?id=' + e.currentTarget.dataset.id });
   },
   source(e) {
-    wx.navigateTo({ url: '/pages/evidence/index?transactionId=' + encodeURIComponent(e.currentTarget.dataset.id) });
+    haptic();
+    wx.navigateTo({ url: '/pages/evidence/index?transactionId=' + e.currentTarget.dataset.id });
   },
   input(e) {
     this.setData({ reason: e.detail.value });
@@ -122,13 +117,14 @@ Page({
     const action = e.currentTarget.dataset.action;
     wx.showModal({
       title: '确认独立复核',
-      content: '审批前将校验权限、证据版本与占用状态；本人提交不可自审。',
+      content: '审批前重新验证权限、证据版本与占用；本人提交不可自审。',
       success: async (r) => {
         if (!r.confirm) return;
         this.setData({ busy: true });
         try {
-          await approve('/matches/' + encodeURIComponent(this.data.id) + '/decision', this.data.match.version, action, this.data.reason);
-          wx.showToast({ title: '审批结果已同步' });
+          await approve('/matches/' + this.data.id + '/decision', this.data.match.version, action, this.data.reason);
+          haptic();
+          wx.showToast({ title: '已同步审批结果' });
           await this.load(true);
         } catch (e) {
           failure(e);

@@ -1,48 +1,47 @@
 <view class="page theme-{{theme}}">
-  <view class="notice error" wx:if="{{error}}" bindtap="load">{{error}} · 轻触重试</view>
+  <view class="title bm-enter stagger-1">我的</view>
+  <view class="notice error" wx:if="{{error}}">{{error}}</view>
 
-  <view class="profile-identity" wx:if="{{user}}">
+  <view class="profile-identity bm-enter stagger-1" wx:if="{{user}}">
     <view class="profile-avatar">{{user.initial}}</view>
-    <view class="profile-meta">
-      <view class="profile-name">{{user.name}}</view>
-      <view class="profile-tenant">{{user.tenant_name}}</view>
-      <text class="pill">{{user.roleLabel}}</text>
-    </view>
+    <view class="card-headline" style="margin-top: 0; font-size: 36rpx;">{{user.name}}</view>
+    <view class="muted" style="margin-top: 6rpx;">{{user.tenant_name}}</view>
+    <text class="pill" style="margin-top: 16rpx;">{{user.roleLabel}}</text>
   </view>
 
-  <view class="card">
-    <view class="row">
-      <view>
-        <view class="card-title" style="margin-bottom:4rpx">外观模式</view>
-        <view class="muted">当前：{{theme === 'dark' ? '深色' : '明亮'}}</view>
+  <view class="card bm-enter stagger-2">
+    <view class="theme-setting-row">
+      <view class="theme-setting-meta">
+        <text class="theme-setting-title">外观模式</text>
+        <text class="muted">在明亮与深色之间切换</text>
       </view>
-      <bm-theme-toggle theme="{{theme}}" bind:change="onThemeChange"/>
+      <bm-daylight-toggle theme="{{theme}}" bindchange="onThemeChange" />
     </view>
   </view>
 
-  <view class="section">授权账户</view>
-  <view class="card bank-account" wx:for="{{accounts}}" wx:key="id">
+  <view class="section bm-enter stagger-3">授权账户</view>
+  <view class="card bank-account bm-enter stagger-3" wx:for="{{accounts}}" wx:key="id">
     <view class="row">
-      <text class="task-name">{{item.bank}}</text>
+      <text style="font-weight: 600;">{{item.bank}}</text>
       <text class="pill">{{item.currency}}</text>
     </view>
     <view class="account-number">{{item.number_masked}}</view>
     <view class="muted">{{item.name}}</view>
   </view>
 
-  <view class="card">
-    <view class="section-with-help">
+  <view class="card bm-enter stagger-4">
+    <view class="row">
       <view class="card-title">企业身份</view>
-      <bm-help label="身份绑定" text="需由企业管理员开通微信登录，并先绑定企业账号。账号权限由企业服务器校验。"/>
+      <bm-help label="身份绑定" text="需由企业管理员开通微信登录，并先绑定当前企业账号。账号权限由服务器校验。" />
     </view>
     <view class="kv"><text>用户名</text><text>{{user.username}}</text></view>
     <view class="kv"><text>登录模式</text><text>{{mode === 'wechat' ? '微信身份' : '企业账号'}}</text></view>
     <button class="secondary" bindtap="bindWechat">绑定当前微信</button>
     <view class="connection-row">
       <text>服务连接</text>
-      <bm-help label="当前服务地址" text="{{apiBase}}"/>
+      <bm-help label="当前服务地址" text="{{apiBase}}" />
     </view>
   </view>
 
-  <button class="secondary danger logout-button" bindtap="logout">退出登录</button>
+  <button class="secondary danger logout-button bm-enter stagger-4" bindtap="logout">退出登录</button>
 </view>

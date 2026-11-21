@@ -1,51 +1,36 @@
-<view class="page login-page theme-{{theme}}">
-  <view class="login-hero">
-    <view class="login-brand-row">
-      <view class="login-brand-tag">
-        <view class="brand-mark"><view class="brand-mark-inner"/></view>
-        <text>银账智核</text>
-      </view>
-      <bm-theme-toggle theme="{{theme}}" compact="{{true}}" bind:change="onThemeChange"/>
-    </view>
-    <view class="title">
-      <view>让每一笔，</view>
-      <view>清晰相合。</view>
-    </view>
-    <view class="sub">企业银行对账与移动复核工作台</view>
+<view class="page login theme-{{theme}}">
+  <view class="mobile-brand bm-enter stagger-1">
+    <view class="brand-link"><view /><view /></view>
+    <text>BankMind</text>
+    <bm-daylight-toggle theme="{{theme}}" compact="{{true}}" bindchange="onThemeChange" />
   </view>
+
+  <view class="title bm-enter stagger-1">
+    <view>让每一笔，</view>
+    <view>清晰相合。</view>
+  </view>
+  <view class="sub bm-enter stagger-1">银账智核 · 移动工作空间</view>
 
   <view class="notice error" wx:if="{{error}}">{{error}}</view>
 
-  <view class="card">
-    <view class="form-label" style="margin-top:0">企业账号</view>
-    <input
-      data-field="username"
-      value="{{username}}"
-      placeholder="请输入企业账号"
-      placeholder-class="input-placeholder"
-      bindinput="input"
-      aria-label="企业账号"
-    />
+  <view class="login-form bm-enter stagger-2">
+    <view class="form-label">企业账号</view>
+    <input data-field="username" value="{{username}}" bindinput="input" aria-label="企业账号" />
     <view class="form-label">密码</view>
-    <input
-      data-field="password"
-      value="{{password}}"
-      password
-      placeholder="请输入登录密码"
-      placeholder-class="input-placeholder"
-      bindinput="input"
-      aria-label="密码"
-    />
-    <button class="primary" loading="{{busy}}" disabled="{{busy}}" bindtap="login">进入工作台 →</button>
+    <input data-field="password" value="{{password}}" password bindinput="input" aria-label="密码" />
+    <button class="primary" loading="{{busy}}" disabled="{{busy}}" bindtap="login">
+      <text>进入工作空间</text>
+      <text>→</text>
+    </button>
     <button class="secondary" wx:if="{{mode === 'wechat'}}" disabled="{{busy}}" bindtap="wechat">微信身份登录</button>
   </view>
 
-  <view class="login-note" wx:if="{{mode !== 'wechat'}}">
+  <view class="login-note bm-enter stagger-3" wx:if="{{mode !== 'wechat'}}">
     <text>企业账号登录</text>
-    <bm-help label="演示登录" text="当前使用企业账号登录。演示账号 reviewer，默认密码 BankMind@2026。"/>
+    <bm-help label="演示登录" text="当前使用企业账号登录。演示账号 reviewer，默认密码 BankMind@2026。" />
   </view>
-  <view class="login-note" wx:else>
+  <view class="login-note bm-enter stagger-3" wx:else>
     <text>微信登录需先绑定企业身份</text>
-    <bm-help label="绑定企业身份" text="使用企业账号登录后，可在「我的」中绑定当前微信。授权账户与权限由企业服务器校验。"/>
+    <bm-help label="绑定企业身份" text="使用企业账号登录后，可在个人中心绑定当前微信。授权账户和角色由企业服务器校验。" />
   </view>
 </view>

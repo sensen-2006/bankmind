@@ -1,29 +1,26 @@
 const { request, requireAuth, failure } = require('../../utils/api');
 const { label } = require('../../utils/labels');
-const { getTheme, syncPageTheme } = require('../../utils/theme');
+const { getTheme, syncPageTheme, haptic } = require('../../utils/theme');
 const config = require('../../config');
 
 Page({
   data: {
-    theme: 'light',
+    theme: getTheme(),
     user: null,
     accounts: [],
     error: '',
     apiBase: config.apiBase,
     mode: config.authMode
   },
-  onLoad() {
-    this.setData({ theme: getTheme() });
-  },
   onShow() {
     syncPageTheme(this);
     if (requireAuth()) this.load();
   },
-  onPullDownRefresh() {
-    this.load().finally(() => wx.stopPullDownRefresh());
-  },
   onThemeChange(e) {
     this.setData({ theme: e.detail.theme });
+  },
+  onPullDownRefresh() {
+    this.load().finally(() => wx.stopPullDownRefresh());
   },
   async load() {
     try {
@@ -42,9 +39,10 @@ Page({
     }
   },
   logout() {
+    haptic();
     wx.showModal({
-      title: '退出登录',
-      content: '退出后需重新登录。',
+      title: '退出企业工作空间',
+      content: '退出后需要重新登录企业账号。',
       success: async (r) => {
         if (!r.confirm) return;
         await request('/auth/logout', 'POST').catch(() => {});
@@ -55,6 +53,7 @@ Page({
     });
   },
   bindWechat() {
+    haptic();
     wx.login({
       success: async (r) => {
         try {

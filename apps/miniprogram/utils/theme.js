@@ -3,48 +3,45 @@ const STORAGE_KEY = 'bankmind-theme';
 function getTheme() {
   try {
     const saved = wx.getStorageSync(STORAGE_KEY);
-    return saved === 'dark' ? 'dark' : 'light';
-  } catch (e) {
-    return 'light';
-  }
+    if (saved === 'dark' || saved === 'light') return saved;
+  } catch (_) {}
+  return 'light';
 }
 
-function applyThemeChrome(theme) {
-  const isDark = theme === 'dark';
-  if (typeof wx !== 'undefined' && typeof wx.setNavigationBarColor === 'function') {
-    try {
-      wx.setNavigationBarColor({
-        frontColor: isDark ? '#ffffff' : '#000000',
-        backgroundColor: isDark ? '#0B0F14' : '#F6F8FA',
-        animation: { duration: 180, timingFunc: 'easeInOut' },
-        fail() {}
-      });
-    } catch (e) {}
-  }
-  if (typeof wx !== 'undefined' && typeof wx.setTabBarStyle === 'function') {
-    try {
-      wx.setTabBarStyle({
-        color: isDark ? '#8492A6' : '#6B7280',
-        selectedColor: isDark ? '#2DD4BF' : '#0D9488',
-        backgroundColor: isDark ? '#121821' : '#FFFFFF',
-        borderStyle: isDark ? 'black' : 'white',
-        fail() {}
-      });
-    } catch (e) {}
-  }
+function haptic() {
+  try {
+    wx.vibrateShort({ type: 'light', fail() {} });
+  } catch (_) {}
 }
 
 function setTheme(theme) {
   const next = theme === 'dark' ? 'dark' : 'light';
   try {
     wx.setStorageSync(STORAGE_KEY, next);
-  } catch (e) {}
-  const app = typeof getApp === 'function' ? getApp() : null;
-  if (app && app.globalData) {
-    app.globalData.theme = next;
-  }
+  } catch (_) {}
   applyThemeChrome(next);
   return next;
+}
+
+function applyThemeChrome(theme) {
+  const dark = theme === 'dark';
+  if (typeof wx.setNavigationBarColor === 'function') {
+    wx.setNavigationBarColor({
+      frontColor: dark ? '#ffffff' : '#000000',
+      backgroundColor: dark ? '#0c1920' : '#f3f7f6',
+      animation: { duration: 220, timingFunc: 'easeInOut' },
+      fail() {}
+    });
+  }
+  if (typeof wx.setTabBarStyle === 'function') {
+    wx.setTabBarStyle({
+      color: dark ? '#8ea39a' : '#627770',
+      selectedColor: dark ? '#dfc992' : '#17211f',
+      backgroundColor: dark ? '#11222a' : '#ffffff',
+      borderStyle: dark ? 'black' : 'white',
+      fail() {}
+    });
+  }
 }
 
 function syncPageTheme(page) {
@@ -57,27 +54,15 @@ function syncPageTheme(page) {
 }
 
 function formatBytes(received, total) {
-  const fmt = (b) => {
-    const n = Number(b) || 0;
-    if (n >= 1024 * 1024) return (n / (1024 * 1024)).toFixed(1) + ' MB';
-    if (n >= 1024) return (n / 1024).toFixed(1) + ' KB';
-    return n + ' B';
+  const fmt = (n) => {
+    const v = Number(n) || 0;
+    if (v >= 1024 * 1024) return (v / (1024 * 1024)).toFixed(1) + ' MB';
+    if (v >= 1024) return (v / 1024).toFixed(1) + ' KB';
+    return v + ' B';
   };
-  const pct = total > 0 ? Math.min(100, Math.round((received / total) * 100)) : 0;
+  if (!total) return fmt(received);
+  const pct = Math.min(100, Math.round(((Number(received) || 0) / Number(total)) * 100));
   return `${fmt(received)} / ${fmt(total)} (${pct}%)`;
 }
 
-function shortId(value) {
-  if (!value) return '';
-  const s = String(value);
-  return s.length > 10 ? s.slice(0, 8) + '…' : s;
-}
-
-module.exports = {
-  getTheme,
-  setTheme,
-  applyThemeChrome,
-  syncPageTheme,
-  formatBytes,
-  shortId
-};
+module.exports = { getTheme, setTheme, applyThemeChrome, syncPageTheme, formatBytes, haptic };

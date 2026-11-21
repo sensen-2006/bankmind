@@ -1,10 +1,10 @@
 const { request, requireAuth } = require('../../utils/api');
 const { label } = require('../../utils/labels');
-const { getTheme, syncPageTheme } = require('../../utils/theme');
+const { getTheme, syncPageTheme, haptic } = require('../../utils/theme');
 
 Page({
   data: {
-    theme: 'light',
+    theme: getTheme(),
     items: [],
     total: 0,
     page: 1,
@@ -14,13 +14,11 @@ Page({
     taskId: ''
   },
   onLoad(q) {
-    this.setData({ theme: getTheme(), taskId: q.taskId || '' });
+    this.setData({ taskId: q.taskId || '' });
   },
   onShow() {
     syncPageTheme(this);
-    if (requireAuth()) {
-      this.load(this.data.items.length > 0);
-    }
+    if (requireAuth()) this.load(this.data.items.length > 0);
   },
   onPullDownRefresh() {
     this.setData({ page: 1 });
@@ -29,9 +27,7 @@ Page({
   async load(quiet = false) {
     if (!quiet) this.setData({ loading: true });
     try {
-      const d = await request(
-        '/cases?task_id=' + encodeURIComponent(this.data.taskId) + '&status=' + encodeURIComponent(this.data.status) + '&page=' + this.data.page
-      );
+      const d = await request('/cases?task_id=' + this.data.taskId + '&status=' + this.data.status + '&page=' + this.data.page);
       this.setData({
         items: d.items.map((c) => ({
           ...c,
@@ -48,6 +44,7 @@ Page({
     }
   },
   filter(e) {
+    haptic();
     this.setData({ status: e.currentTarget.dataset.status, page: 1 });
     this.load();
   },
@@ -60,6 +57,7 @@ Page({
     this.load();
   },
   detail(e) {
-    wx.navigateTo({ url: '/pages/detail/index?id=' + encodeURIComponent(e.currentTarget.dataset.id) });
+    haptic();
+    wx.navigateTo({ url: '/pages/detail/index?id=' + e.currentTarget.dataset.id });
   }
 });

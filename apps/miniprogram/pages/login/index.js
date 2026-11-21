@@ -1,10 +1,10 @@
 const { request } = require('../../utils/api');
-const { getTheme, syncPageTheme } = require('../../utils/theme');
+const { getTheme, syncPageTheme, haptic } = require('../../utils/theme');
 const config = require('../../config');
 
 Page({
   data: {
-    theme: 'light',
+    theme: getTheme(),
     username: 'reviewer',
     password: 'BankMind@2026',
     busy: false,
@@ -12,10 +12,7 @@ Page({
     mode: config.authMode
   },
   onLoad() {
-    this.setData({ theme: getTheme() });
-    if (wx.getStorageSync('bankmind-token')) {
-      wx.switchTab({ url: '/pages/home/index' });
-    }
+    if (wx.getStorageSync('bankmind-token')) wx.switchTab({ url: '/pages/home/index' });
   },
   onShow() {
     syncPageTheme(this);
@@ -27,6 +24,7 @@ Page({
     this.setData({ [e.currentTarget.dataset.field]: e.detail.value });
   },
   async login() {
+    haptic();
     this.setData({ busy: true, error: '' });
     try {
       const result = await request('/auth/login', 'POST', {
@@ -44,11 +42,11 @@ Page({
     wx.setStorageSync('bankmind-token', result.token);
     const user = await request('/me');
     wx.setStorageSync('bankmind-user', user);
-    const app = getApp();
-    if (app && app.globalData) app.globalData.user = user;
+    getApp().globalData.user = user;
     wx.switchTab({ url: '/pages/home/index' });
   },
   wechat() {
+    haptic();
     this.setData({ busy: true });
     wx.login({
       success: async (res) => {

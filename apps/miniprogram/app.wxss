@@ -1,2 +1,4 @@
-@import './styles/tokens.wxss';
-@import './styles/common.wxss';
+@import './tokens.wxss';
+@import './base.wxss';
+@import './luminous.wxss';
+@import './apple-polish.wxss';

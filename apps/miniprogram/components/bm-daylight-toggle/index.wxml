@@ -1,0 +1,22 @@
+<view
+  class="daylight-btn {{theme === 'dark' ? 'is-dark' : 'is-light'}} {{compact ? 'is-compact' : ''}}"
+  bindtap="toggle"
+  aria-role="switch"
+  aria-checked="{{theme === 'dark'}}"
+  aria-label="{{theme === 'dark' ? '当前深色模式，轻触切换明亮模式' : '当前明亮模式，轻触切换深色模式'}}"
+>
+  <view class="daylight-track">
+    <view class="daylight-clouds">
+      <view class="cloud c1" />
+      <view class="cloud c2" />
+    </view>
+    <view class="daylight-stars">
+      <view class="star s1" />
+      <view class="star s2" />
+    </view>
+    <view class="daylight-thumb">
+      <view class="daylight-orb" />
+    </view>
+  </view>
+  <text class="daylight-text">{{theme === 'dark' ? '深色' : '明亮'}}</text>
+</view>

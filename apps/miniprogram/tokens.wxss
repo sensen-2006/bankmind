@@ -1,0 +1,20 @@
+page {
+  --bg: #f3f7f6;
+  --surface: rgba(255, 255, 255, 0.72);
+  --surface-solid: #ffffff;
+  --surface-secondary: rgba(235, 245, 241, 0.76);
+  --blue-dark: #17211f;
+  --ink: #13201d;
+  --muted: #5b726a;
+  --blue: #26b888;
+  --mint: #4fd1a5;
+  --aqua: #72e0bb;
+  --green: #148562;
+  --amber: #9a641d;
+  --red: #c23b4e;
+  --line: rgba(19, 32, 29, 0.08);
+  --space-unit: 16rpx;
+  --radius-card: 38rpx;
+  --radius-control: 24rpx;
+  --shadow-card: inset 0 1rpx 0 rgba(255, 255, 255, 0.95), 0 12rpx 34rpx rgba(17, 42, 34, 0.06);
+}

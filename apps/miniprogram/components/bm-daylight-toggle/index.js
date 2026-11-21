@@ -1,9 +1,6 @@
-const { setTheme } = require('../../utils/theme');
+const { setTheme, haptic } = require('../../utils/theme');
 
 Component({
-  options: {
-    styleIsolation: 'apply-shared'
-  },
   properties: {
     theme: {
       type: String,
@@ -16,6 +13,7 @@ Component({
   },
   methods: {
     toggle() {
+      haptic();
       const next = this.data.theme === 'dark' ? 'light' : 'dark';
       setTheme(next);
       this.triggerEvent('change', { theme: next });

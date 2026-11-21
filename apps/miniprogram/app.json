@@ -12,15 +12,15 @@
   ],
   "window": {
     "navigationBarTitleText": "银账智核",
-    "navigationBarBackgroundColor": "#F6F8FA",
+    "navigationBarBackgroundColor": "#f3f7f6",
     "navigationBarTextStyle": "black",
-    "backgroundColor": "#F6F8FA",
+    "backgroundColor": "#f3f7f6",
     "enablePullDownRefresh": true
   },
   "tabBar": {
-    "color": "#6B7280",
-    "selectedColor": "#0D9488",
-    "backgroundColor": "#FFFFFF",
+    "color": "#627770",
+    "selectedColor": "#17211f",
+    "backgroundColor": "#ffffff",
     "borderStyle": "white",
     "list": [
       {
@@ -54,6 +54,6 @@
   "usingComponents": {
     "bm-loading": "/components/bm-loading/index",
     "bm-help": "/components/bm-help/index",
-    "bm-theme-toggle": "/components/bm-theme-toggle/index"
+    "bm-daylight-toggle": "/components/bm-daylight-toggle/index"
   }
 }

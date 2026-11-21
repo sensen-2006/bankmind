@@ -1,25 +1,39 @@
 const { label } = require('../../utils/labels');
 const { request, requireAuth } = require('../../utils/api');
-const { getTheme, syncPageTheme } = require('../../utils/theme');
+const { getTheme, syncPageTheme, haptic } = require('../../utils/theme');
+
+function buildTaskMetrics(t) {
+  const valid = (t.summary && t.summary.sides && t.summary.sides.BANK && t.summary.sides.BANK.valid) || 0;
+  const matched = (t.summary && t.summary.sides && t.summary.sides.BANK && t.summary.sides.BANK.matched) || 0;
+  const pending = (t.summary && t.summary.pending_matches) || 0;
+  const confirmedPct = valid ? Math.min(100, Math.round((matched / valid) * 100)) : 0;
+  const pendingPct = valid ? Math.min(100 - confirmedPct, Math.round((pending / valid) * 100)) : 0;
+  return {
+    ...t,
+    statusLabel: label(t.status),
+    confirmedPct,
+    pendingPct
+  };
+}
 
 Page({
   data: {
-    theme: 'light',
+    theme: getTheme(),
     loading: true,
     error: '',
     dashboard: null,
     user: null,
     recentTasks: []
   },
-  onLoad() {
-    this.setData({ theme: getTheme() });
-  },
   onShow() {
     syncPageTheme(this);
     if (requireAuth()) {
-      this.load(Boolean(this.data.dashboard));
+      this.load(!!this.data.dashboard);
       this.timer = setInterval(() => this.load(true), 15000);
     }
+  },
+  onThemeChange(e) {
+    this.setData({ theme: e.detail.theme });
   },
   onHide() {
     clearInterval(this.timer);
@@ -30,9 +44,6 @@ Page({
   onPullDownRefresh() {
     this.load(true).finally(() => wx.stopPullDownRefresh());
   },
-  onThemeChange(e) {
-    this.setData({ theme: e.detail.theme });
-  },
   async load(quiet = false) {
     if (!quiet) this.setData({ loading: true });
     try {
@@ -40,13 +51,7 @@ Page({
       this.setData({
         dashboard: d,
         user: u,
-        recentTasks: (d.recent_tasks || []).slice(0, 2).map((t) => ({
-          ...t,
-          statusLabel: label(t.status),
-          confirmedPct: t.summary.sides.BANK.valid
-            ? Math.round((t.summary.sides.BANK.matched / t.summary.sides.BANK.valid) * 100)
-            : 0
-        })),
+        recentTasks: (d.recent_tasks || []).slice(0, 2).map(buildTaskMetrics),
         error: ''
       });
     } catch (e) {
@@ -56,15 +61,19 @@ Page({
     }
   },
   openTask(e) {
-    wx.navigateTo({ url: '/pages/evidence/index?taskId=' + encodeURIComponent(e.currentTarget.dataset.id) });
+    haptic();
+    wx.navigateTo({ url: '/pages/evidence/index?taskId=' + e.currentTarget.dataset.id });
   },
   tasks() {
+    haptic();
     wx.switchTab({ url: '/pages/tasks/index' });
   },
   approvals() {
+    haptic();
     wx.switchTab({ url: '/pages/approvals/index' });
   },
   alerts() {
+    haptic();
     wx.navigateTo({ url: '/pages/alerts/index' });
   }
 });

@@ -1,64 +1,77 @@
 <view class="page home-page theme-{{theme}}">
-  <view class="mobile-brand">
-    <view class="brand-left">
-      <view class="brand-mark"><view class="brand-mark-inner"/></view>
-      <text class="brand-name">银账智核</text>
-      <text class="brand-edition" wx:if="{{user.name}}">{{user.name}}</text>
-    </view>
-    <bm-theme-toggle theme="{{theme}}" compact="{{true}}" bind:change="onThemeChange"/>
+  <view class="mobile-brand bm-enter stagger-1">
+    <view class="brand-link"><view /><view /></view>
+    <text>BankMind</text>
+    <bm-daylight-toggle theme="{{theme}}" compact="{{true}}" bindchange="onThemeChange" />
   </view>
 
-  <view class="home-greeting">
-    <view class="title-compact">今天的对账，从容掌握</view>
-    <view class="sub">{{user.tenant_name || '企业工作台'}}<text wx:if="{{user.demo}}"> · 演示数据</text></view>
+  <view class="home-greeting bm-enter stagger-1">
+    <view class="home-overline">银账智核 · 移动工作台</view>
+    <view class="title">
+      <view>今天的对账，</view>
+      <view>从容掌握。</view>
+    </view>
+    <view class="sub">{{user.tenant_name}}<text wx:if="{{user.demo}}"> · 演示数据</text></view>
   </view>
 
   <view class="notice error" wx:if="{{error}}" bindtap="load">{{error}} · 轻触重试</view>
-  <bm-loading wx:if="{{loading && !dashboard}}" text="正在同步工作台"/>
+  <bm-loading wx:if="{{loading && !dashboard}}" text="正在同步" />
 
   <block wx:if="{{dashboard}}">
-    <view class="home-bento">
-      <view class="review-tile" bindtap="approvals" aria-role="button" aria-label="查看待复核事项">
-        <view class="tile-label"><text>待复核</text><text>↗</text></view>
+    <view class="home-stat-line bm-enter stagger-2">
+      <view>
+        <text class="home-stat-number">{{dashboard.auto_coverage}}<text>%</text></text>
+        <view class="muted">
+          <text>自动覆盖</text>
+          <bm-help label="自动覆盖口径" text="程序自动匹配覆盖的有效银行交易行比例。数据来自当前授权范围，不含未确认建议。" />
+        </view>
+      </view>
+      <view>
+        <text class="home-stat-number">{{dashboard.task_count}}</text>
+        <view class="muted">累计任务</view>
+      </view>
+    </view>
+
+    <view class="home-bento bm-enter stagger-3">
+      <view class="review-tile tappable" bindtap="approvals" aria-role="button" aria-label="查看待复核事项">
         <view>
+          <view class="tile-label">
+            <text>待复核</text>
+            <view class="bento-arrow-pill">↗</view>
+          </view>
           <view class="review-value">{{dashboard.pending_matches}}</view>
           <view class="tile-footer">匹配待确认</view>
         </view>
-        <view class="tile-bottom">进入待办 →</view>
+        <view class="tile-bottom">
+          <text>进入待办</text>
+          <text>→</text>
+        </view>
       </view>
-      <view class="home-bento-right">
-        <view class="stat" bindtap="tasks" aria-role="button" aria-label="查看本月任务">
-          <view class="tile-label"><text>本月任务</text><text>↗</text></view>
-          <view class="value">{{dashboard.month_tasks}}</view>
+
+      <view class="stat task-tile tappable" bindtap="tasks" aria-role="button" aria-label="查看对账任务">
+        <view class="tile-label">
+          <text>本月任务</text>
+          <view class="bento-arrow-pill">↗</view>
         </view>
-        <view class="stat stat-alert" bindtap="alerts" aria-role="button" aria-label="查看待调查异常">
-          <view class="tile-label"><text>待调查</text><text>↗</text></view>
-          <view class="value">{{dashboard.open_cases}}</view>
+        <view class="value">{{dashboard.month_tasks}}</view>
+      </view>
+
+      <view class="stat stat-alert tappable" bindtap="alerts" aria-role="button" aria-label="查看待调查异常">
+        <view class="tile-label">
+          <text>待调查</text>
+          <view class="bento-arrow-pill">↗</view>
         </view>
+        <view class="value">{{dashboard.open_cases}}</view>
       </view>
     </view>
 
-    <view class="home-stat-line">
-      <view class="home-stat-card">
-        <view class="home-stat-number">{{dashboard.auto_coverage}}<text class="home-stat-unit">%</text></view>
-        <view class="home-stat-label">
-          <text>自动覆盖率</text>
-          <bm-help label="自动覆盖口径" text="程序自动匹配覆盖的有效银行交易行比例。数据来自当前授权范围，不含未确认建议。"/>
-        </view>
-      </view>
-      <view class="home-stat-card">
-        <view class="home-stat-number">{{dashboard.task_count}}</view>
-        <view class="home-stat-label"><text>累计任务</text></view>
-      </view>
-    </view>
-
-    <view class="row section-heading">
+    <view class="row section-heading bm-enter stagger-4">
       <view class="section">最近任务</view>
       <button class="inline-action" bindtap="tasks">全部 →</button>
     </view>
 
     <view
-      class="card task-card"
+      class="card task-card home-task tappable bm-enter stagger-4 {{item.status === 'COMPLETED' ? 'status-completed' : 'status-review'}}"
       wx:for="{{recentTasks}}"
       wx:key="id"
       data-id="{{item.id}}"
@@ -67,15 +80,27 @@
     >
       <view class="row">
         <text class="task-name">{{item.name}}</text>
+        <view class="bento-arrow-pill">↗</view>
+      </view>
+      <view class="row" style="margin-top: 12rpx;">
+        <text class="muted">{{item.account_name}}</text>
         <text class="pill {{item.status === 'COMPLETED' ? 'success' : 'amber'}}">{{item.statusLabel}}</text>
       </view>
-      <view class="muted task-account">{{item.account_name}}</view>
       <view class="task-period">{{item.start_date}} — {{item.end_date}}</view>
+
       <view class="row progress-caption">
         <text>已确认覆盖</text>
         <text>{{item.confirmedPct}}%</text>
       </view>
-      <view class="progress"><view style="width:{{item.confirmedPct}}%"/></view>
+      <view class="bento-striped-bar">
+        <view class="bar-certain liquid-bar" wx:if="{{item.confirmedPct > 0}}" style="width: {{item.confirmedPct}}%;" />
+        <view class="bar-suggested liquid-bar" wx:if="{{item.pendingPct > 0}}" style="width: {{item.pendingPct}}%;" />
+      </view>
+      <view class="progress-legend">
+        <view class="legend-item"><view class="legend-dot certain" /><text>已确定 {{item.confirmedPct}}%</text></view>
+        <view class="legend-item"><view class="legend-dot suggested" /><text>待确认 {{item.summary.pending_matches}} 笔</text></view>
+      </view>
+
       <view class="task-bottom">
         <text>{{item.summary.pending_matches}} 待确认 · {{item.summary.open_cases}} 异常</text>
         <text>查看证据 →</text>
@@ -84,7 +109,7 @@
 
     <view class="empty" wx:if="{{!recentTasks.length}}">
       <view>还没有对账任务</view>
-      <view class="muted">在电脑端导入数据后，即可在这里跟进。</view>
+      <view class="muted">在电脑端导入后，即可在这里跟进。</view>
     </view>
   </block>
 </view>
