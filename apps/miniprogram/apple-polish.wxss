@@ -311,6 +311,32 @@ page {
   box-shadow: none !important;
 }
 
+.page-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin: 10rpx 0 20rpx;
+}
+
+.page-title-row .title {
+  margin: 0 !important;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.primary.create-task-btn {
+  width: auto !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 14rpx 28rpx !important;
+  min-height: 70rpx !important;
+  font-size: 25rpx !important;
+  border-radius: 999rpx !important;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 .pill {
   display: inline-flex !important;
   align-items: center;
