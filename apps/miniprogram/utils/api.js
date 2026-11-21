@@ -26,7 +26,7 @@ function errorText(detail) {
   return '请求未完成，请检查参数或刷新';
 }
 
-function handleResponse(res, resolve, reject) {
+function handleResponse(path, res, resolve, reject) {
   let body = res.data;
   if (typeof body === 'string') {
     try {
@@ -36,12 +36,19 @@ function handleResponse(res, resolve, reject) {
   if (res.statusCode >= 200 && res.statusCode < 300) {
     return resolve(body);
   }
+  const isAuthEndpoint = String(path || '').startsWith('/auth/');
   if (res.statusCode === 401) {
     wx.removeStorageSync('bankmind-token');
-    wx.reLaunch({ url: '/pages/login/index' });
+    if (!isAuthEndpoint) {
+      wx.reLaunch({ url: '/pages/login/index' });
+    }
   }
   const detail = body && body.detail;
-  reject(new Error(typeof detail === 'string' ? detail : errorText(detail)));
+  const fallback =
+    res.statusCode === 401
+      ? '账号密码无效或服务未授权（401），请检查登录凭据'
+      : '请求未完成（HTTP ' + res.statusCode + '），请检查服务状态';
+  reject(new Error(typeof detail === 'string' ? detail : detail ? errorText(detail) : fallback));
 }
 
 function request(path, method = 'GET', data) {
@@ -68,7 +75,7 @@ function request(path, method = 'GET', data) {
           'content-type': 'application/json'
         },
         success(res) {
-          handleResponse(res, resolve, reject);
+          handleResponse(path, res, resolve, reject);
         },
         fail(err) {
           const msg = (err && err.errMsg) || '';
@@ -97,7 +104,7 @@ function request(path, method = 'GET', data) {
         'content-type': 'application/json'
       },
       success(res) {
-        handleResponse(res, resolve, reject);
+        handleResponse(path, res, resolve, reject);
       },
       fail() {
         reject(new Error('无法连接后端，请检查API地址、网络与合法域名配置'));
