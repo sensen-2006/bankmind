@@ -7,15 +7,23 @@
       <view class="work-status-pill">
         <text class="muted">银行流水</text>
         <text class="work-status-num">{{task.summary.sides.BANK.valid || 0}} 行</text>
+        <text class="muted" style="font-size: 20rpx;" wx:if="{{task.summary.sides.BANK.quarantined}}">隔离 {{task.summary.sides.BANK.quarantined}}</text>
       </view>
       <view class="work-status-pill">
         <text class="muted">企业账簿</text>
         <text class="work-status-num">{{task.summary.sides.BOOK.valid || 0}} 行</text>
+        <text class="muted" style="font-size: 20rpx;" wx:if="{{task.summary.sides.BOOK.quarantined}}">隔离 {{task.summary.sides.BOOK.quarantined}}</text>
       </view>
       <view class="work-status-pill">
         <text class="muted">待核对预览</text>
         <text class="work-status-num">{{batches.length}} 批</text>
       </view>
+    </view>
+    <view
+      class="notice error"
+      wx:if="{{(task.summary.sides.BANK.quarantined || task.summary.sides.BOOK.quarantined) && (!task.summary.sides.BANK.valid || !task.summary.sides.BOOK.valid)}}"
+    >
+      部分或全部数据被隔离（银行隔离 {{task.summary.sides.BANK.quarantined || 0}} 行，账簿隔离 {{task.summary.sides.BOOK.quarantined || 0}} 行）。常见原因：CSV 里的交易日期不在本任务起止日期（{{task.start_date}} — {{task.end_date}}）内，或账号与本任务账户不匹配。请新建一个覆盖文件日期范围的任务再导入！
     </view>
   </view>
   <view wx:if="{{error}}" class="notice error">{{error}}</view>
