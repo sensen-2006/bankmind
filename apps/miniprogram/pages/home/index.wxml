@@ -15,7 +15,7 @@
   </view>
 
   <view class="notice error" wx:if="{{error}}" bindtap="load">{{error}} · 轻触重试</view>
-  <bm-loading wx:if="{{loading && !dashboard}}" text="正在同步" />
+  <bm-loading wx:if="{{loading && !dashboard}}" theme="{{theme}}" text="正在同步" />
 
   <block wx:if="{{dashboard}}">
     <view class="home-stat-line bm-enter stagger-2">

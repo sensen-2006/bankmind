@@ -3,10 +3,24 @@
   <view class="work-task-meta bm-enter stagger-1" wx:if="{{task}}">
     <view class="card-headline" style="margin-top: 0;">{{task.name}} · {{task.currency}}</view>
     <view class="muted">{{task.start_date}} — {{task.end_date}}</view>
+    <view class="work-status-strip">
+      <view class="work-status-pill">
+        <text class="muted">银行流水</text>
+        <text class="work-status-num">{{task.summary.sides.BANK.valid || 0}} 行</text>
+      </view>
+      <view class="work-status-pill">
+        <text class="muted">企业账簿</text>
+        <text class="work-status-num">{{task.summary.sides.BOOK.valid || 0}} 行</text>
+      </view>
+      <view class="work-status-pill">
+        <text class="muted">待核对预览</text>
+        <text class="work-status-num">{{batches.length}} 批</text>
+      </view>
+    </view>
   </view>
   <view wx:if="{{error}}" class="notice error">{{error}}</view>
   <view wx:if="{{progress}}" class="notice">{{progress}}</view>
-  <bm-loading wx:if="{{!task && !error}}" text="正在读取导入与作业" />
+  <bm-loading wx:if="{{!task && !error}}" theme="{{theme}}" text="正在读取导入与作业" />
   <view wx:if="{{task && !enabled}}" class="notice">当前部署未开启后台作业，请在电脑端继续导入。</view>
 
   <block wx:if="{{task && enabled}}">
@@ -21,7 +35,7 @@
           <text class="picker-arrow">▾</text>
         </view>
       </picker>
-      <button class="secondary" disabled="{{busy}}" bindtap="chooseFile">{{file ? file.name : '从聊天选择文件'}}</button>
+      <button class="secondary" disabled="{{busy}}" bindtap="chooseFile">{{file ? file.name : '从微信聊天 / 文件传输助手选择文件'}}</button>
       <view class="field">
         <text class="field-label">Excel 工作表</text>
         <input class="control" placeholder="默认首表" value="{{sheet}}" data-name="sheet" bindinput="setting" disabled="{{busy}}" />
@@ -30,7 +44,7 @@
         <text class="field-label">表头行号</text>
         <input class="control" type="number" value="{{header}}" data-name="header" bindinput="setting" disabled="{{busy}}" />
       </view>
-      <view class="muted">支持 CSV、Excel、文本 PDF。断线后重新选择同一文件和配置即可续传。</view>
+      <view class="muted">支持 CSV、Excel、文本 PDF（单文件上限 10 MB）。微信沙盒限制仅可从聊天记录选文件，建议先将对账单发到「文件传输助手」再选取；断线后重选同一文件可续传。</view>
       <button class="primary" disabled="{{!file || busy}}" bindtap="enqueueFile">上传或继续上传</button>
     </view>
 

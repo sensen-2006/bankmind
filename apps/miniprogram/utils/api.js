@@ -11,6 +11,16 @@ function ensureCloudInit() {
   }
 }
 
+function canUseCloud() {
+  return Boolean(
+    config.cloudEnv &&
+      config.cloudService &&
+      typeof wx !== 'undefined' &&
+      wx.cloud &&
+      typeof wx.cloud.callContainer === 'function'
+  );
+}
+
 function errorText(detail) {
   if (typeof detail === 'string') return detail;
   if (detail && detail.message) {
@@ -24,6 +34,17 @@ function errorText(detail) {
     ].join('；');
   }
   return '请求未完成，请检查参数或刷新';
+}
+
+function friendlyCloudError(err) {
+  const msg = String((err && (err.errMsg || err.message)) || '');
+  if (msg.includes('102002') || msg.includes('超时') || /timeout/i.test(msg)) {
+    return '云托管服务正在冷启动或网络较慢，请稍候轻触重试';
+  }
+  if (msg.includes('abort') || msg.includes('app hide')) {
+    return '页面切换导致请求中断，请轻触重试';
+  }
+  return '无法连接云托管后端，请检查网络后重试';
 }
 
 function handleResponse(path, res, resolve, reject) {
@@ -51,46 +72,50 @@ function handleResponse(path, res, resolve, reject) {
   reject(new Error(typeof detail === 'string' ? detail : detail ? errorText(detail) : fallback));
 }
 
-function request(path, method = 'GET', data) {
-  const token = wx.getStorageSync('bankmind-token') || '';
-  const useCloud = Boolean(
-    config.cloudEnv &&
-      config.cloudService &&
-      typeof wx !== 'undefined' &&
-      wx.cloud &&
-      typeof wx.cloud.callContainer === 'function'
-  );
+function callCloudOnce(path, method, data, token) {
+  ensureCloudInit();
+  return new Promise((resolve, reject) => {
+    const options = {
+      config: { env: config.cloudEnv },
+      path: '/api' + path,
+      method,
+      timeout: 45000,
+      header: {
+        'X-WX-SERVICE': config.cloudService,
+        Authorization: 'Bearer ' + token,
+        'content-type': 'application/json'
+      },
+      success(res) {
+        handleResponse(path, res, resolve, reject);
+      },
+      fail(err) {
+        reject(err);
+      }
+    };
+    if (data !== undefined) options.data = data;
+    wx.cloud.callContainer(options);
+  });
+}
 
-  if (useCloud) {
-    ensureCloudInit();
-    return new Promise((resolve, reject) => {
-      const options = {
-        config: { env: config.cloudEnv },
-        path: '/api' + path,
-        method,
-        timeout: 25000,
-        header: {
-          'X-WX-SERVICE': config.cloudService,
-          Authorization: 'Bearer ' + token,
-          'content-type': 'application/json'
-        },
-        success(res) {
-          handleResponse(path, res, resolve, reject);
-        },
-        fail(err) {
-          const msg = (err && err.errMsg) || '';
-          reject(
-            new Error(
-              msg
-                ? '云托管连接失败：' + msg
-                : '无法连接云托管后端，请确认小程序已绑定环境并检查网络'
-            )
-          );
+async function request(path, method = 'GET', data) {
+  const token = wx.getStorageSync('bankmind-token') || '';
+  if (canUseCloud()) {
+    try {
+      return await callCloudOnce(path, method, data, token);
+    } catch (err) {
+      if (err instanceof Error) throw err;
+      const msg = String((err && err.errMsg) || '');
+      const isTimeout = msg.includes('102002') || msg.includes('超时') || /timeout/i.test(msg);
+      if (method === 'GET' && isTimeout) {
+        try {
+          return await callCloudOnce(path, method, data, token);
+        } catch (retryErr) {
+          if (retryErr instanceof Error) throw retryErr;
+          throw new Error(friendlyCloudError(retryErr));
         }
-      };
-      if (data !== undefined) options.data = data;
-      wx.cloud.callContainer(options);
-    });
+      }
+      throw new Error(friendlyCloudError(err));
+    }
   }
 
   return new Promise((resolve, reject) =>
@@ -98,7 +123,7 @@ function request(path, method = 'GET', data) {
       url: config.apiBase + path,
       method,
       data,
-      timeout: 25000,
+      timeout: 30000,
       header: {
         Authorization: 'Bearer ' + token,
         'content-type': 'application/json'
@@ -111,6 +136,27 @@ function request(path, method = 'GET', data) {
       }
     })
   );
+}
+
+function asciiBytes(str) {
+  const arr = new Uint8Array(str.length);
+  for (let i = 0; i < str.length; i++) arr[i] = str.charCodeAt(i) & 0xff;
+  return arr;
+}
+
+function buildMultipart(chunkBuffer, boundary) {
+  const head = asciiBytes(
+    `--${boundary}\r\n` +
+      'Content-Disposition: form-data; name="file"; filename="chunk.bin"\r\n' +
+      'Content-Type: application/octet-stream\r\n\r\n'
+  );
+  const body = new Uint8Array(chunkBuffer);
+  const tail = asciiBytes(`\r\n--${boundary}--\r\n`);
+  const merged = new Uint8Array(head.length + body.length + tail.length);
+  merged.set(head, 0);
+  merged.set(body, head.length);
+  merged.set(tail, head.length + body.length);
+  return merged.buffer;
 }
 
 function key() {
@@ -137,6 +183,41 @@ function approve(path, version, action, reason) {
 }
 
 function upload(path, filePath, formData) {
+  const token = wx.getStorageSync('bankmind-token') || '';
+  if (canUseCloud() && typeof wx.getFileSystemManager === 'function') {
+    ensureCloudInit();
+    return new Promise((resolve, reject) => {
+      wx.getFileSystemManager().readFile({
+        filePath,
+        success(fileRes) {
+          const boundary = '----BankMindChunk' + Date.now().toString(36);
+          const payload = buildMultipart(fileRes.data, boundary);
+          wx.cloud.callContainer({
+            config: { env: config.cloudEnv },
+            path: '/api' + path,
+            method: 'POST',
+            data: payload,
+            timeout: 60000,
+            header: {
+              'X-WX-SERVICE': config.cloudService,
+              Authorization: 'Bearer ' + token,
+              'content-type': 'multipart/form-data; boundary=' + boundary
+            },
+            success(res) {
+              handleResponse(path, res, resolve, reject);
+            },
+            fail() {
+              reject(new Error('上传中断，重新选择同一文件可续传'));
+            }
+          });
+        },
+        fail() {
+          reject(new Error('读取本地分块失败，请重新选择文件'));
+        }
+      });
+    });
+  }
+
   return new Promise((resolve, reject) =>
     wx.uploadFile({
       url: config.apiBase + path,
@@ -144,7 +225,7 @@ function upload(path, filePath, formData) {
       name: 'file',
       formData,
       timeout: 60000,
-      header: { Authorization: 'Bearer ' + (wx.getStorageSync('bankmind-token') || '') },
+      header: { Authorization: 'Bearer ' + token },
       success(res) {
         if (res.statusCode === 401) {
           wx.removeStorageSync('bankmind-token');

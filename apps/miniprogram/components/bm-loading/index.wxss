@@ -41,23 +41,23 @@
   margin-top: 24rpx;
 }
 
-.theme-dark .skeleton {
+.loading-state.theme-dark .skeleton {
   background: rgba(16, 33, 42, 0.72) !important;
   border-color: rgba(255, 255, 255, 0.1) !important;
   box-shadow: inset 0 1rpx 0 rgba(255, 255, 255, 0.08), 0 12rpx 32rpx rgba(0, 0, 0, 0.32) !important;
 }
 
-.theme-dark .skeleton view {
+.loading-state.theme-dark .skeleton view {
   background: linear-gradient(
     90deg,
     rgba(255, 255, 255, 0.06) 25%,
-    rgba(95, 211, 166, 0.14) 50%,
+    rgba(95, 211, 166, 0.16) 50%,
     rgba(255, 255, 255, 0.06) 75%
   ) !important;
   background-size: 200% 100% !important;
 }
 
-.theme-dark .loading-text {
+.loading-state.theme-dark .loading-text {
   color: #9eb3aa !important;
 }
 

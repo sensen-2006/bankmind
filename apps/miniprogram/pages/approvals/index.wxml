@@ -15,16 +15,19 @@
     </view>
   </view>
 
-  <view class="notice" wx:if="{{truncated}}">当前展示前 {{matches.length}} 条（共 {{matchTotal}} 条），更多请前往电脑端处理。</view>
-  <view class="notice error" wx:if="{{error}}">{{error}}</view>
-  <bm-loading wx:if="{{loading}}" text="正在同步待办" />
+  <view class="notice error" wx:if="{{error}}" bindtap="retry">{{error}} · 轻触重试</view>
+  <bm-loading wx:if="{{loading}}" theme="{{theme}}" text="正在同步待办" />
 
   <view class="empty" wx:if="{{!loading && !matches.length && !cases.length}}">
     <view class="empty-check">✓</view>
     <view>暂时没有待办</view>
   </view>
 
-  <view class="section bm-enter stagger-3" wx:if="{{matches.length}}">匹配确认</view>
+  <view class="row section-heading bm-enter stagger-3" wx:if="{{matches.length}}">
+    <view class="section">匹配确认</view>
+    <text class="muted" wx:if="{{totalPages > 1}}">第 {{page}} / {{totalPages}} 页</text>
+  </view>
+
   <view
     class="card review-card tappable bm-enter stagger-3"
     wx:for="{{matches}}"
@@ -47,6 +50,12 @@
       <text>{{item.bank.length}} 银行流水 ↔ {{item.book.length}} 企业账簿</text>
       <text>核对证据 →</text>
     </view>
+  </view>
+
+  <view class="pagination-bar" wx:if="{{!loading && totalPages > 1}}">
+    <button class="secondary page-btn" disabled="{{page <= 1}}" bindtap="prevPage">上一页</button>
+    <view class="pagination-info">{{page}} / {{totalPages}} 页 · 共 {{matchTotal}} 条</view>
+    <button class="secondary page-btn" disabled="{{page >= totalPages}}" bindtap="nextPage">下一页</button>
   </view>
 
   <view class="section bm-enter stagger-4" wx:if="{{cases.length}}">异常审批</view>
