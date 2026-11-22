@@ -1,4 +1,5 @@
 <view class="page home-page theme-{{theme}}">
+  <bm-splash />
   <view class="mobile-brand bm-enter stagger-1">
     <view class="brand-link"><view /><view /></view>
     <text>BankMind</text>
@@ -110,10 +111,6 @@
     <view class="empty" wx:if="{{!recentTasks.length}}">
       <view>还没有对账任务</view>
       <view class="muted">在电脑端导入后，即可在这里跟进。</view>
-    </view>
-
-    <view class="home-brand-banner bm-enter stagger-4">
-      <image class="home-banner-img" src="/assets/covers/bankmind-banner-16x9.jpg" mode="aspectFill" />
     </view>
   </block>
 </view>

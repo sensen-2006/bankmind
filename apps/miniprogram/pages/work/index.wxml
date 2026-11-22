@@ -24,6 +24,24 @@
   <view wx:if="{{task && !enabled}}" class="notice">当前部署未开启后台作业，请在电脑端继续导入。</view>
 
   <block wx:if="{{task && enabled}}">
+    <view wx:if="{{task.current_run}}" class="card ai bm-enter stagger-1">
+      <view class="card-title">✓ 自动对账匹配已完成</view>
+      <view class="muted">银行 {{task.summary.sides.BANK.matched}} / {{task.summary.sides.BANK.valid}} · 企业账簿 {{task.summary.sides.BOOK.matched}} / {{task.summary.sides.BOOK.valid}} · {{task.summary.pending_matches}} 条待复核 · {{task.summary.open_cases}} 条异常</view>
+      <view class="actions">
+        <button class="secondary" bindtap="openAlerts">查看异常调查</button>
+        <button class="primary" bindtap="openMatches">查看匹配证据 →</button>
+      </view>
+    </view>
+
+    <view wx:if="{{canMatch}}" class="card ai bm-enter stagger-1">
+      <view class="step-header">
+        <text class="step-badge">最终步</text>
+        <text class="heading">两侧数据已就绪</text>
+      </view>
+      <view class="muted">银行流水与企业账簿均已发布，点击下方按钮立即运行自动对账匹配！</view>
+      <button class="primary" disabled="{{busy}}" bindtap="match">▶ 运行后台自动匹配</button>
+    </view>
+
     <view wx:if="{{!task.current_run}}" class="card bm-enter stagger-2">
       <view class="step-header">
         <text class="step-badge">步骤 1</text>
@@ -68,9 +86,10 @@
     <view wx:if="{{batches.length}}" class="card bm-enter stagger-3">
       <view class="step-header">
         <text class="step-badge">步骤 2</text>
-        <text class="heading">待核对预览</text>
+        <text class="heading">待核对预览（{{batches.length}} 份）</text>
       </view>
-      <view class="muted" style="margin-bottom: 12rpx;">请依次点击下方文件，核对字段映射并点「提交后台校验并发布」；银行与账簿两侧均发布后将自动出现「运行后台匹配」按钮。</view>
+      <view class="muted" style="margin-bottom: 12rpx;">点击下方「一键校验并发布」即可自动按推荐映射发布全部表格；也可点单个文件手动调整列映射。</view>
+      <button wx:if="{{canQuickPublish}}" class="primary" disabled="{{busy}}" bindtap="publishAll">⚡ 一键校验并发布全部待核对文件</button>
       <button wx:for="{{batches}}" wx:key="id" class="secondary" disabled="{{busy}}" data-id="{{item.id}}" bindtap="selectBatch">
         {{item.side === 'BANK' ? '银行流水' : '企业账簿'}} · {{item.filename}} · {{item.row_count}} 行 →
       </button>

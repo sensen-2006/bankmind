@@ -99,7 +99,11 @@
   </block>
 
   <block wx:if="{{taskId && !id}}">
-    <view class="empty" wx:if="{{!loading && !items.length}}">尚无匹配结果，请先在电脑端完成导入和执行。</view>
+    <view class="empty" wx:if="{{!loading && !items.length}}">
+      <view>尚无匹配结果</view>
+      <view class="muted" style="margin-top: 12rpx;">请先完成银行流水与企业账簿的上传、发布并运行自动匹配。</view>
+      <button class="primary" style="margin-top: 28rpx;" bindtap="goWork">前往数据导入与匹配 →</button>
+    </view>
     <view
       class="card tappable bm-enter stagger-2"
       wx:for="{{items}}"

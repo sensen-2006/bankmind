@@ -14,6 +14,7 @@ Page({
     matchTotal: 0,
     page: 1,
     totalPages: 1,
+    jumpInput: '',
     loading: true,
     error: ''
   },
@@ -78,7 +79,28 @@ Page({
     if (this.data.page >= this.data.totalPages) return;
     haptic();
     playSound('click');
-    this.setData({ page: this.data.page + 1 });
+    this.setData({ page: this.data.page + 1, jumpInput: '' });
+    this.load(false);
+    wx.pageScrollTo({ scrollTop: 0, duration: 200 });
+  },
+  onJumpInput(e) {
+    this.setData({ jumpInput: e.detail.value });
+  },
+  jumpToPage() {
+    const raw = String(this.data.jumpInput || '').trim();
+    const target = Number(raw);
+    if (!Number.isInteger(target) || target < 1 || target > this.data.totalPages) {
+      playSound('error');
+      wx.showToast({ title: `请输入 1 至 ${this.data.totalPages} 的页码`, icon: 'none' });
+      return;
+    }
+    if (target === this.data.page) {
+      this.setData({ jumpInput: '' });
+      return;
+    }
+    haptic();
+    playSound('click');
+    this.setData({ page: target, jumpInput: '' });
     this.load(false);
     wx.pageScrollTo({ scrollTop: 0, duration: 200 });
   },

@@ -52,10 +52,25 @@
     </view>
   </view>
 
-  <view class="pagination-bar" wx:if="{{!loading && totalPages > 1}}">
-    <button class="secondary page-btn" disabled="{{page <= 1}}" bindtap="prevPage">上一页</button>
-    <view class="pagination-info">{{page}} / {{totalPages}} 页 · 共 {{matchTotal}} 条</view>
-    <button class="secondary page-btn" disabled="{{page >= totalPages}}" bindtap="nextPage">下一页</button>
+  <view class="pagination-wrap" wx:if="{{!loading && totalPages > 1}}">
+    <view class="pagination-bar">
+      <button class="secondary page-btn" disabled="{{page <= 1}}" bindtap="prevPage">上一页</button>
+      <view class="pagination-info">{{page}} / {{totalPages}} 页 · 共 {{matchTotal}} 条</view>
+      <button class="secondary page-btn" disabled="{{page >= totalPages}}" bindtap="nextPage">下一页</button>
+    </view>
+    <view class="pagination-jump">
+      <text class="muted">跳至第</text>
+      <input
+        class="jump-input"
+        type="number"
+        value="{{jumpInput}}"
+        placeholder="{{page}}"
+        bindinput="onJumpInput"
+        bindconfirm="jumpToPage"
+      />
+      <text class="muted">页</text>
+      <button class="secondary jump-btn" bindtap="jumpToPage">跳转</button>
+    </view>
   </view>
 
   <view class="section bm-enter stagger-4" wx:if="{{cases.length}}">异常审批</view>

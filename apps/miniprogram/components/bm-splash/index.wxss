@@ -1,0 +1,38 @@
+.splash-overlay {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 9999;
+  background: #f3f7f6;
+  opacity: 1;
+  transition: opacity 380ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.splash-overlay.is-leaving {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.splash-img {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.splash-skip {
+  position: fixed;
+  right: 32rpx;
+  bottom: calc(56rpx + env(safe-area-inset-bottom));
+  padding: 14rpx 30rpx;
+  border-radius: 999rpx;
+  background: rgba(17, 24, 23, 0.56);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1rpx solid rgba(255, 255, 255, 0.24);
+  color: #ffffff;
+  font-size: 24rpx;
+  font-weight: 500;
+  letter-spacing: 1rpx;
+}

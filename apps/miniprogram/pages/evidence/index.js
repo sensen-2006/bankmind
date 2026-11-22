@@ -98,6 +98,11 @@ Page({
     haptic();
     wx.navigateTo({ url: '/pages/evidence/index?id=' + e.currentTarget.dataset.id });
   },
+  goWork() {
+    haptic();
+    playSound('click');
+    wx.navigateTo({ url: '/pages/work/index?taskId=' + encodeURIComponent(this.data.taskId) });
+  },
   source(e) {
     haptic();
     wx.navigateTo({ url: '/pages/evidence/index?transactionId=' + e.currentTarget.dataset.id });

@@ -1588,6 +1588,43 @@ picker {
   color: #9eb3aa !important;
 }
 
+.pagination-wrap {
+  margin-top: 28rpx;
+}
+
+.pagination-wrap .pagination-bar {
+  margin-top: 0;
+}
+
+.pagination-jump {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+
+.jump-input {
+  width: 112rpx !important;
+  min-height: 64rpx !important;
+  height: 64rpx !important;
+  padding: 0 14rpx !important;
+  text-align: center;
+  border-radius: 18rpx !important;
+  font-size: 25rpx !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.jump-btn {
+  width: auto !important;
+  min-width: 96rpx !important;
+  min-height: 64rpx !important;
+  margin: 0 !important;
+  padding: 10rpx 24rpx !important;
+  border-radius: 999rpx !important;
+  font-size: 24rpx !important;
+}
+
 /* Home Brand Showcase Banner (16:9) */
 .home-brand-banner {
   margin-top: 28rpx;

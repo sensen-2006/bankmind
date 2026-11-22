@@ -1,4 +1,5 @@
 <view class="page login theme-{{theme}}">
+  <bm-splash />
   <view class="mobile-brand bm-enter stagger-1">
     <view class="brand-link"><view /><view /></view>
     <text>BankMind</text>

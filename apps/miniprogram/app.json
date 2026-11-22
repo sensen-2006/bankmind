@@ -54,6 +54,7 @@
   "usingComponents": {
     "bm-loading": "/components/bm-loading/index",
     "bm-help": "/components/bm-help/index",
-    "bm-daylight-toggle": "/components/bm-daylight-toggle/index"
+    "bm-daylight-toggle": "/components/bm-daylight-toggle/index",
+    "bm-splash": "/components/bm-splash/index"
   }
 }

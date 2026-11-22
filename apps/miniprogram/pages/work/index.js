@@ -56,13 +56,27 @@ function displayRows(rows, columns) {
   }));
 }
 
+function guessDirection(suggested) {
+  if (suggested && suggested.amount) return 0; // signed_in
+  if (suggested && suggested.debit && suggested.credit) return 2; // debit_in
+  return -1;
+}
+
+function guessFormat(batch) {
+  const dateCol = batch && batch.suggested_mapping && batch.suggested_mapping.date;
+  const firstVal = dateCol && batch.preview && batch.preview[0] && batch.preview[0].raw && batch.preview[0].raw[dateCol];
+  if (firstVal && /^\d{4}[-/]\d{1,2}[-/]\d{1,2}/.test(String(firstVal).trim())) return 0; // ISO
+  return 0; // default ISO for standard CSV/Excel
+}
+
 function makeDraft(batch) {
   const visual = batch.quality.encoding === 'document-ai';
   const choices = ['未映射', ...batch.columns];
+  const isDoc = visual || /\.pdf$/i.test(batch.filename);
   return {
     batch,
     visual,
-    document: visual || /\.pdf$/i.test(batch.filename),
+    document: isDoc,
     choices,
     fields: Object.entries(fields).map(([id, title]) => ({
       id,
@@ -76,8 +90,8 @@ function makeDraft(batch) {
           fields: pageFields.map(([id, title]) => ({ id, title, value: '' }))
         }))
       : [],
-    direction: -1,
-    format: -1,
+    direction: isDoc ? -1 : guessDirection(batch.suggested_mapping),
+    format: isDoc ? -1 : guessFormat(batch),
     order: 0,
     confirmed: false,
     sourceVerified: false,
@@ -229,11 +243,20 @@ Page({
       const task = result.task;
       const jobs = result.background_jobs ? await request(root(id)) : [];
       const batches = result.batches.filter((batch) => batch.status === 'PREVIEWED');
+      const quickPublishable = batches.filter(
+        (b) =>
+          b.quality.encoding !== 'document-ai' &&
+          !/\.pdf$/i.test(b.filename) &&
+          b.suggested_mapping &&
+          b.suggested_mapping.date &&
+          (b.suggested_mapping.amount || (b.suggested_mapping.debit && b.suggested_mapping.credit))
+      );
       const draft = this.data.draft;
       this.setData({
         task,
         enabled: result.background_jobs,
         batches,
+        canQuickPublish: !task.current_run && quickPublishable.length > 0,
         canMatch: !task.current_run && task.summary.sides.BANK.valid > 0 && task.summary.sides.BOOK.valid > 0,
         draft: draft && !batches.some((batch) => batch.id === draft.batch.id) ? null : draft,
         jobs: jobs.map((job) => ({
@@ -385,6 +408,53 @@ Page({
       wx.showToast({ title: '已提交校验并发布', icon: 'none' });
       this.setData({ progress: statusNames[job.status] });
     });
+  },
+  publishAll() {
+    return this.runAction(async () => {
+      const { task, batches } = this.data;
+      const targets = batches.filter(
+        (b) =>
+          b.quality.encoding !== 'document-ai' &&
+          !/\.pdf$/i.test(b.filename) &&
+          b.suggested_mapping &&
+          b.suggested_mapping.date &&
+          (b.suggested_mapping.amount || (b.suggested_mapping.debit && b.suggested_mapping.credit))
+      );
+      if (!targets.length) throw new Error('没有可一键发布的表格批次，请手动核对');
+      const confirmed = await new Promise((resolve) =>
+        wx.showModal({
+          title: '一键校验并发布',
+          content: `将按系统识别的字段映射（ISO 日期、正数流入/借方流入）发布 ${targets.length} 份待核对文件。确认继续？`,
+          success: (r) => resolve(r.confirm),
+          fail: () => resolve(false)
+        })
+      );
+      if (!confirmed) return;
+      const selections = targets.map((b) => {
+        const d = makeDraft(b);
+        d.confirmed = true;
+        return { batch_id: b.id, mapping: mapping(d, task) };
+      });
+      const job = await submit(task.id, {
+        kind: 'PUBLISH',
+        version: task.version,
+        selections
+      });
+      haptic();
+      playSound('success');
+      wx.showToast({ title: '正在后台校验并发布', icon: 'none' });
+      this.setData({ draft: null, progress: statusNames[job.status] });
+    });
+  },
+  openMatches() {
+    haptic();
+    playSound('click');
+    wx.navigateTo({ url: '/pages/evidence/index?taskId=' + encodeURIComponent(this.data.taskId) });
+  },
+  openAlerts() {
+    haptic();
+    playSound('click');
+    wx.navigateTo({ url: '/pages/alerts/index?taskId=' + encodeURIComponent(this.data.taskId) });
   },
   match() {
     return this.runAction(async () => {

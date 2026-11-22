@@ -1,7 +1,7 @@
 const config = require('./config');
 
 App({
-  globalData: { config, user: null },
+  globalData: { config, user: null, splashShown: false },
   onLaunch() {
     if (config.cloudEnv && wx.cloud && typeof wx.cloud.init === 'function') {
       try {

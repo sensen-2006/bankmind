@@ -1,0 +1,4 @@
+<view wx:if="{{visible}}" class="splash-overlay {{leaving ? 'is-leaving' : ''}}" catchtouchmove="noop">
+  <image class="splash-img" src="/assets/covers/bankmind-splash-9x16.jpg" mode="aspectFill" />
+  <view class="splash-skip" bindtap="dismiss">跳过</view>
+</view>
