@@ -412,7 +412,7 @@ Page({
   publishAll() {
     return this.runAction(async () => {
       const { task, batches } = this.data;
-      const targets = batches.filter(
+      const eligible = batches.filter(
         (b) =>
           b.quality.encoding !== 'document-ai' &&
           !/\.pdf$/i.test(b.filename) &&
@@ -420,11 +420,18 @@ Page({
           b.suggested_mapping.date &&
           (b.suggested_mapping.amount || (b.suggested_mapping.debit && b.suggested_mapping.credit))
       );
+      // Backend allows at most one preview batch per side (BANK / BOOK) per publish job.
+      const bySide = new Map();
+      for (const b of eligible) {
+        if (!bySide.has(b.side)) bySide.set(b.side, b);
+      }
+      const targets = Array.from(bySide.values());
       if (!targets.length) throw new Error('没有可一键发布的表格批次，请手动核对');
+      const sideText = targets.map((b) => (b.side === 'BANK' ? '银行流水' : '企业账簿')).join(' + ');
       const confirmed = await new Promise((resolve) =>
         wx.showModal({
           title: '一键校验并发布',
-          content: `将按系统识别的字段映射（ISO 日期、正数流入/借方流入）发布 ${targets.length} 份待核对文件。确认继续？`,
+          content: `将按系统识别的字段映射发布最新 ${sideText}（共 ${targets.length} 份）。确认继续？`,
           success: (r) => resolve(r.confirm),
           fail: () => resolve(false)
         })
