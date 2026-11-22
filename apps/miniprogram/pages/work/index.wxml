@@ -70,8 +70,9 @@
         <text class="step-badge">步骤 2</text>
         <text class="heading">待核对预览</text>
       </view>
+      <view class="muted" style="margin-bottom: 12rpx;">请依次点击下方文件，核对字段映射并点「提交后台校验并发布」；银行与账簿两侧均发布后将自动出现「运行后台匹配」按钮。</view>
       <button wx:for="{{batches}}" wx:key="id" class="secondary" disabled="{{busy}}" data-id="{{item.id}}" bindtap="selectBatch">
-        {{item.side === 'BANK' ? '银行流水' : '企业账簿'}} · {{item.filename}} · {{item.row_count}} 行
+        {{item.side === 'BANK' ? '银行流水' : '企业账簿'}} · {{item.filename}} · {{item.row_count}} 行 →
       </button>
     </view>
 

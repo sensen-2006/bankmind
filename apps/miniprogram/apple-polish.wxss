@@ -1587,3 +1587,24 @@ picker {
 .theme-dark .pagination-info {
   color: #9eb3aa !important;
 }
+
+/* Home Brand Showcase Banner (16:9) */
+.home-brand-banner {
+  margin-top: 28rpx;
+  border-radius: 36rpx;
+  overflow: hidden;
+  border: 1rpx solid rgba(255, 255, 255, 0.88);
+  box-shadow: 0 12rpx 32rpx rgba(17, 42, 34, 0.08);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.home-banner-img {
+  display: block;
+  width: 100%;
+  height: 360rpx;
+}
+
+.theme-dark .home-brand-banner {
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 14rpx 36rpx rgba(0, 0, 0, 0.36);
+}

@@ -281,6 +281,7 @@ Page({
     try {
       await action();
     } catch (error) {
+      playSound('error');
       this.setData({ error: error.message });
     } finally {
       await this.load();
@@ -297,12 +298,19 @@ Page({
       const job = await uploadChunks(taskId, side === 0 ? 'BANK' : 'BOOK', file, sheet.trim(), +header, (j) => {
         this.setData({ progress: formatBytes(j.received_bytes, j.total_bytes) });
       });
+      haptic();
+      playSound('success');
+      wx.showToast({ title: '上传成功，请点步骤2核对', icon: 'none' });
       this.setData({ file: null, progress: statusNames[job.status] });
     });
   },
   selectBatch(event) {
     const batch = this.data.batches.find((item) => item.id === event.currentTarget.dataset.id);
-    if (batch) this.setData({ draft: makeDraft(batch), error: '' });
+    if (batch) {
+      haptic();
+      playSound('open');
+      this.setData({ draft: makeDraft(batch), error: '' });
+    }
   },
   edit(event) {
     const { name, index, page } = event.currentTarget.dataset;
@@ -372,6 +380,9 @@ Page({
         version: task.version,
         selections: [{ batch_id: draft.batch.id, mapping: checked }]
       });
+      haptic();
+      playSound('success');
+      wx.showToast({ title: '已提交校验并发布', icon: 'none' });
       this.setData({ progress: statusNames[job.status] });
     });
   },
@@ -388,6 +399,9 @@ Page({
       if (confirmed) {
         const { task } = this.data;
         const job = await submit(task.id, { kind: 'MATCH', version: task.version, require_both: true });
+        haptic();
+        playSound('success');
+        wx.showToast({ title: '已提交后台自动匹配', icon: 'none' });
         this.setData({ progress: statusNames[job.status] });
       }
     });

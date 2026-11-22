@@ -184,5 +184,12 @@ Page({
     haptic();
     playSound('click');
     wx.navigateTo({ url: '/pages/alerts/index?taskId=' + encodeURIComponent(e.currentTarget.dataset.id) });
+  },
+  onShareAppMessage() {
+    return {
+      title: '银账智核 BankMind · 对账任务中心',
+      path: '/pages/tasks/index',
+      imageUrl: '/assets/covers/bankmind-share-5x4.jpg'
+    };
   }
 });

@@ -80,5 +80,12 @@ Page({
     haptic();
     playSound('click');
     wx.navigateTo({ url: '/pages/alerts/index' });
+  },
+  onShareAppMessage() {
+    return {
+      title: '银账智核 BankMind · 智能银企对账工作台',
+      path: '/pages/home/index',
+      imageUrl: '/assets/covers/bankmind-share-5x4.jpg'
+    };
   }
 });
