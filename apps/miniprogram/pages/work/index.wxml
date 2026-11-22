@@ -29,12 +29,29 @@
         <text class="step-badge">步骤 1</text>
         <text class="heading">本地分块上传</text>
       </view>
-      <picker mode="selector" range="{{sides}}" value="{{side}}" data-name="side" bindchange="setting">
-        <view class="control picker-control">
-          <text>数据来源 · {{sides[side]}}</text>
-          <text class="picker-arrow">▾</text>
+      <view class="field-label">选择本次上传的数据来源</view>
+      <view class="side-switch">
+        <view
+          class="side-option {{side === 0 ? 'active' : ''}}"
+          data-side="0"
+          bindtap="selectSide"
+          aria-role="radio"
+          aria-checked="{{side === 0}}"
+        >
+          <text class="side-option-title">银行流水</text>
+          <text class="side-option-sub">银行对账单</text>
         </view>
-      </picker>
+        <view
+          class="side-option {{side === 1 ? 'active' : ''}}"
+          data-side="1"
+          bindtap="selectSide"
+          aria-role="radio"
+          aria-checked="{{side === 1}}"
+        >
+          <text class="side-option-title">企业账簿</text>
+          <text class="side-option-sub">企业日记账</text>
+        </view>
+      </view>
       <button class="secondary" disabled="{{busy}}" bindtap="chooseFile">{{file ? file.name : '从微信聊天 / 文件传输助手选择文件'}}</button>
       <view class="field">
         <text class="field-label">Excel 工作表</text>
@@ -45,7 +62,7 @@
         <input class="control" type="number" value="{{header}}" data-name="header" bindinput="setting" disabled="{{busy}}" />
       </view>
       <view class="muted">支持 CSV、Excel、文本 PDF（单文件上限 10 MB）。微信沙盒限制仅可从聊天记录选文件，建议先将对账单发到「文件传输助手」再选取；断线后重选同一文件可续传。</view>
-      <button class="primary" disabled="{{!file || busy}}" bindtap="enqueueFile">上传或继续上传</button>
+      <button class="primary" disabled="{{!file || busy}}" bindtap="enqueueFile">上传{{sides[side]}}文件</button>
     </view>
 
     <view wx:if="{{batches.length}}" class="card bm-enter stagger-3">

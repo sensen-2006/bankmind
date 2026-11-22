@@ -1,6 +1,7 @@
 const { request, requireAuth, errorText } = require('../../utils/api');
 const { submit, change, root, uploadChunks } = require('../../utils/jobs');
-const { getTheme, syncPageTheme, formatBytes } = require('../../utils/theme');
+const { getTheme, syncPageTheme, formatBytes, haptic } = require('../../utils/theme');
+const { playSound } = require('../../utils/sound');
 const config = require('../../config');
 
 const sides = ['银行流水', '企业账簿'];
@@ -261,6 +262,14 @@ Page({
         }
       }
     });
+  },
+  selectSide(event) {
+    if (this.data.busy) return;
+    const side = Number(event.currentTarget.dataset.side);
+    if (side === this.data.side) return;
+    haptic();
+    playSound('click');
+    this.setData({ side, error: '' });
   },
   setting(event) {
     const name = event.currentTarget.dataset.name;

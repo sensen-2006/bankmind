@@ -182,40 +182,54 @@ function approve(path, version, action, reason) {
   return request(path, 'POST', { version, action, reason, idempotency_key: receipts.get(signature) });
 }
 
+const MOBILE_UPLOAD_PART = 48 * 1024;
+
+function readLocalFile(filePath) {
+  return new Promise((resolve, reject) => {
+    wx.getFileSystemManager().readFile({
+      filePath,
+      success(res) {
+        resolve(res.data);
+      },
+      fail() {
+        reject(new Error('读取本地分块失败，请重新选择文件'));
+      }
+    });
+  });
+}
+
+async function uploadViaMobileFiles(path, filePath, formData) {
+  const buffer = await readLocalFile(filePath);
+  const size = buffer.byteLength;
+  if (!size) throw new Error('文件分块为空，请重新选择文件');
+  const form = {};
+  if (formData && typeof formData === 'object') {
+    for (const [k, v] of Object.entries(formData)) {
+      if (v !== undefined && v !== null) form[k] = String(v);
+    }
+  }
+  const transfer = await request('/mobile-files/uploads', 'POST', { path, size, form });
+  try {
+    for (let offset = 0; offset < size; offset += MOBILE_UPLOAD_PART) {
+      const slice = buffer.slice(offset, Math.min(size, offset + MOBILE_UPLOAD_PART));
+      const content = wx.arrayBufferToBase64(slice);
+      await request('/mobile-files/uploads/' + transfer.id + '/part', 'POST', { offset, content });
+    }
+    return await request('/mobile-files/uploads/' + transfer.id + '/complete', 'POST');
+  } catch (err) {
+    request('/mobile-files/' + transfer.id + '/release', 'POST').catch(() => {});
+    throw err;
+  }
+}
+
 function upload(path, filePath, formData) {
   const token = wx.getStorageSync('bankmind-token') || '';
-  if (canUseCloud() && typeof wx.getFileSystemManager === 'function') {
-    ensureCloudInit();
-    return new Promise((resolve, reject) => {
-      wx.getFileSystemManager().readFile({
-        filePath,
-        success(fileRes) {
-          const boundary = '----BankMindChunk' + Date.now().toString(36);
-          const payload = buildMultipart(fileRes.data, boundary);
-          wx.cloud.callContainer({
-            config: { env: config.cloudEnv },
-            path: '/api' + path,
-            method: 'POST',
-            data: payload,
-            timeout: 60000,
-            header: {
-              'X-WX-SERVICE': config.cloudService,
-              Authorization: 'Bearer ' + token,
-              'content-type': 'multipart/form-data; boundary=' + boundary
-            },
-            success(res) {
-              handleResponse(path, res, resolve, reject);
-            },
-            fail() {
-              reject(new Error('上传中断，重新选择同一文件可续传'));
-            }
-          });
-        },
-        fail() {
-          reject(new Error('读取本地分块失败，请重新选择文件'));
-        }
-      });
-    });
+  if (
+    canUseCloud() &&
+    typeof wx.getFileSystemManager === 'function' &&
+    typeof wx.arrayBufferToBase64 === 'function'
+  ) {
+    return uploadViaMobileFiles(path, filePath, formData);
   }
 
   return new Promise((resolve, reject) =>
