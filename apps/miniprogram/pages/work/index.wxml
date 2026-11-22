@@ -32,6 +32,17 @@
   <view wx:if="{{task && !enabled}}" class="notice">当前部署未开启后台作业，请在电脑端继续导入。</view>
 
   <block wx:if="{{task && enabled}}">
+    <view wx:if="{{dateMismatch}}" class="card bm-enter stagger-1" style="border-left: 6rpx solid #e0a84c;">
+      <view class="card-title" style="color: #9a641d;">⚠ 检测到文件日期超出当前任务范围</view>
+      <view class="muted">
+        识别到文件交易日期为 <text style="font-weight: 600;">{{dateMismatch.min}} — {{dateMismatch.max}}</text>，而当前任务期间为 {{task.start_date}} — {{task.end_date}}。若直接发布会被风控隔离。
+      </view>
+      <view class="actions">
+        <button class="secondary danger" disabled="{{busy}}" bindtap="clearMismatch">传错了，一键清除</button>
+        <button class="primary" disabled="{{busy}}" bindtap="createMatchingTask">一键按文件日期建新任务</button>
+      </view>
+    </view>
+
     <view wx:if="{{task.current_run}}" class="card ai bm-enter stagger-1">
       <view class="card-title">✓ 自动对账匹配已完成</view>
       <view class="muted">银行 {{task.summary.sides.BANK.matched}} / {{task.summary.sides.BANK.valid}} · 企业账簿 {{task.summary.sides.BOOK.matched}} / {{task.summary.sides.BOOK.valid}} · {{task.summary.pending_matches}} 条待复核 · {{task.summary.open_cases}} 条异常</view>

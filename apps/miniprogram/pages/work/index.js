@@ -56,6 +56,75 @@ function displayRows(rows, columns) {
   }));
 }
 
+function parseIsoDate(raw) {
+  if (!raw) return '';
+  const m = /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/.exec(String(raw).trim());
+  if (!m) return '';
+  const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return '';
+  return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+function monthEnd(isoDate) {
+  const [y, m] = isoDate.split('-').map(Number);
+  const lastDay = new Date(y, m, 0).getDate();
+  return `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+}
+
+function scanBatchDates(batches) {
+  let min = '', max = '';
+  for (const b of batches) {
+    const dateCol = b.suggested_mapping && b.suggested_mapping.date;
+    if (!dateCol || !Array.isArray(b.preview)) continue;
+    for (const row of b.preview) {
+      const iso = parseIsoDate(row.raw && row.raw[dateCol]);
+      if (!iso) continue;
+      if (!min || iso < min) min = iso;
+      if (!max || iso > max) max = iso;
+    }
+  }
+  return min && max ? { min, max } : null;
+}
+
+function scanCsvDates(filePath) {
+  return new Promise((resolve) => {
+    if (typeof wx.getFileSystemManager !== 'function') return resolve(null);
+    wx.getFileSystemManager().readFile({
+      filePath,
+      encoding: 'utf8',
+      success(res) {
+        const text = String(res.data || '');
+        const matches = text.match(/\b20\d{2}[-/]\d{1,2}[-/]\d{1,2}\b/g);
+        if (!matches || !matches.length) return resolve(null);
+        let min = '', max = '';
+        for (let i = 0; i < matches.length; i++) {
+          const iso = parseIsoDate(matches[i]);
+          if (!iso) continue;
+          if (!min || iso < min) min = iso;
+          if (!max || iso > max) max = iso;
+        }
+        resolve(min && max ? { min, max } : null);
+      },
+      fail() {
+        resolve(null);
+      }
+    });
+  });
+}
+
+function computeMismatch(range, task) {
+  if (!range || !task) return null;
+  if (range.min >= task.start_date && range.max <= task.end_date) return null;
+  const suggestedStart = range.min.slice(0, 7) + '-01';
+  const suggestedEnd = monthEnd(range.max);
+  return {
+    min: range.min,
+    max: range.max,
+    suggestedStart,
+    suggestedEnd
+  };
+}
+
 function guessDirection(suggested) {
   if (suggested && suggested.amount) return 0; // signed_in
   if (suggested && suggested.debit && suggested.credit) return 2; // debit_in
@@ -194,6 +263,9 @@ Page({
     task: null,
     jobs: [],
     batches: [],
+    dismissedBatchIds: [],
+    fileDateRange: null,
+    dateMismatch: null,
     draft: null,
     file: null,
     side: 0,
@@ -242,7 +314,8 @@ Page({
       const result = await request('/tasks/' + encodeURIComponent(id) + '/workbench');
       const task = result.task;
       const jobs = result.background_jobs ? await request(root(id)) : [];
-      const batches = result.batches.filter((batch) => batch.status === 'PREVIEWED');
+      const dismissed = new Set(this.data.dismissedBatchIds || []);
+      const batches = result.batches.filter((batch) => batch.status === 'PREVIEWED' && !dismissed.has(batch.id));
       const quickPublishable = batches.filter(
         (b) =>
           b.quality.encoding !== 'document-ai' &&
@@ -251,11 +324,15 @@ Page({
           b.suggested_mapping.date &&
           (b.suggested_mapping.amount || (b.suggested_mapping.debit && b.suggested_mapping.credit))
       );
+      const batchRange = scanBatchDates(batches);
+      const activeRange = this.data.fileDateRange || batchRange;
+      const dateMismatch = !task.current_run ? computeMismatch(activeRange, task) : null;
       const draft = this.data.draft;
       this.setData({
         task,
         enabled: result.background_jobs,
         batches,
+        dateMismatch,
         canQuickPublish: !task.current_run && quickPublishable.length > 0,
         canMatch: !task.current_run && task.summary.sides.BANK.valid > 0 && task.summary.sides.BOOK.valid > 0,
         draft: draft && !batches.some((batch) => batch.id === draft.batch.id) ? null : draft,
@@ -279,10 +356,56 @@ Page({
       count: 1,
       type: 'file',
       extension: ['csv', 'xls', 'xlsx', 'pdf'],
-      success: (result) => {
-        if (result.tempFiles[0]) {
-          this.setData({ file: result.tempFiles[0], error: '', progress: '' });
+      success: async (result) => {
+        const picked = result.tempFiles[0];
+        if (!picked) return;
+        let fileDateRange = null;
+        if (/\.csv$/i.test(picked.name)) {
+          fileDateRange = await scanCsvDates(picked.path);
         }
+        const dateMismatch = computeMismatch(fileDateRange, this.data.task);
+        if (dateMismatch) playSound('error');
+        else playSound('click');
+        this.setData({ file: picked, fileDateRange, dateMismatch, error: '', progress: '' });
+      }
+    });
+  },
+  clearMismatch() {
+    haptic();
+    playSound('click');
+    const hidden = [...(this.data.dismissedBatchIds || []), ...this.data.batches.map((b) => b.id)];
+    this.setData({
+      file: null,
+      fileDateRange: null,
+      dateMismatch: null,
+      draft: null,
+      dismissedBatchIds: hidden,
+      batches: [],
+      canQuickPublish: false,
+      error: '',
+      progress: ''
+    });
+    wx.showToast({ title: '已清除，请重新选择文件', icon: 'none' });
+  },
+  createMatchingTask() {
+    const { task, dateMismatch } = this.data;
+    if (!task || !dateMismatch) return;
+    return this.runAction(async () => {
+      const startYm = dateMismatch.suggestedStart.slice(0, 7);
+      const endYm = dateMismatch.suggestedEnd.slice(0, 7);
+      const labelPeriod = startYm === endYm ? startYm : `${startYm}至${endYm}`;
+      const created = await request('/tasks', 'POST', {
+        name: `${labelPeriod} · 自动匹配期间对账`,
+        account_id: task.account_id,
+        currency: task.currency,
+        start_date: dateMismatch.suggestedStart,
+        end_date: dateMismatch.suggestedEnd
+      });
+      haptic();
+      playSound('success');
+      wx.showToast({ title: '已按文件日期建好新任务' });
+      if (created && created.id) {
+        wx.redirectTo({ url: '/pages/work/index?taskId=' + encodeURIComponent(created.id) });
       }
     });
   },
@@ -324,7 +447,7 @@ Page({
       haptic();
       playSound('success');
       wx.showToast({ title: '上传成功，请点步骤2核对', icon: 'none' });
-      this.setData({ file: null, progress: statusNames[job.status] });
+      this.setData({ file: null, fileDateRange: null, progress: statusNames[job.status] });
     });
   },
   selectBatch(event) {
