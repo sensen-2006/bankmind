@@ -14,44 +14,53 @@ MAX_ROWS = 20000
 PRECISION = {'CNY': 2, 'USD': 2, 'EUR': 2, 'HKD': 2, 'JPY': 0, 'KWD': 3}
 ALIASES = {
     'date': [
-        '交易日期', '记账日期', '入账日期', '起息日', '日期', '交易时间',
+        '交易日期', '记账日期', '入账日期', '起息日', '日期', '交易时间', '交易日',
         'date', 'booking_date', 'value_date', 'posting_date', 'transaction_date',
-        'buchungsdatum', 'valuta', '取引日', '取引日付', '交易日',
+        'date_transaction', 'date_process', 'date_book', 'date_interest', 'source_date',
+        'posted date', 'post date', 'trans. date', 'trans date', 'check date', 'operation date',
+        'buchungsdatum', 'buchungstag', 'valuta', 'datum', 'date valeur', 'date opération',
+        '取引日', '取引日付', '処理日',
     ],
     'amount': [
-        '发生额', '交易金额', '金额', '收支金额', '交易额',
-        'amount', 'amount_signed', 'transaction_amount', 'net_amount',
-        'betrag', '取引金額', '金額',
+        '发生额', '交易金额', '金额', '收支金额', '交易额', '交易金額',
+        'amount', 'amount_signed', 'amount_negated', 'transaction_amount', 'net_amount', 'montant',
+        'betrag', 'umsatz', '取引金額', '金額',
     ],
     'debit': [
-        '借方发生额', '借方金额', '借方', '收入', '收入金额', '转入金额', '贷记金额',
-        'debit', 'debit_amount', 'paid_in', 'credit_in', 'soll', '入金', '借方發生額',
+        '借方发生额', '借方金额', '借方', '收入', '收入金额', '转入金额', '贷记金额', '借方發生額', '借方金額',
+        'debit', 'debit_amount', 'amount_debit', 'withdrawal', 'paid_in', 'credit_in',
+        'soll', 'débit', '入金',
     ],
     'credit': [
-        '贷方发生额', '贷方金额', '贷方', '支出', '支出金额', '转出金额', '借记金额',
-        'credit', 'credit_amount', 'paid_out', 'haben', '出金', '貸方發生額',
+        '贷方发生额', '贷方金额', '贷方', '支出', '支出金额', '转出金额', '借记金额', '貸方發生額', '貸方金額',
+        'credit', 'credit_amount', 'amount_credit', 'deposit', 'paid_out',
+        'haben', 'crédit', '出金',
     ],
-    'currency': ['币种', '货币', '幣種', 'currency', 'ccy', 'währung', '通貨'],
+    'currency': ['币种', '货币', '幣種', 'currency', 'currency_code', 'currency-code', 'ccy', 'währung', 'devise', '通貨'],
     'account': [
         '本方账号', '银行账号', '账号', '卡号', '账户号', '本方帳號',
-        'account', 'account_number', 'iban', 'konto', '口座番号',
+        'account', 'account_number', 'account_iban', 'account-iban', 'iban', 'konto', 'compte', '口座番号',
     ],
     'reference': [
         '银行流水号', '交易编号', '流水号', '参考号', '业务参考号', '凭证号', '交易流水号', '核心流水号',
-        'reference', 'ref', 'transaction_id', 'bank_reference', 'end_to_end_id', 'referenz', '取引番号',
+        'reference', 'ref', 'transaction_id', 'external_id', 'external-id', 'bank_reference',
+        'end_to_end_id', 'referenz', 'référence', '取引番号',
     ],
     'counterparty': [
         '对方名称', '交易对手', '交易对方', '对方户名', '对方账户名称', '收/付款人名称', '交易對手', '對方戶名',
-        'counterparty', 'payee', 'payer', 'beneficiary', 'merchant', 'auftraggeber', 'begünstigter', '取引先',
+        'counterparty', 'opposing_name', 'opposing-name', 'payee', 'payer', 'beneficiary', 'merchant',
+        'auftraggeber', 'begünstigter', 'tiers', '取引先',
     ],
     'description': [
         '交易摘要', '摘要', '用途', '附言', '备注', '交易附言', '業務摘要',
-        'description', 'narrative', 'memo', 'purpose', 'remittance', 'verwendungszweck', '摘要内容', '明細',
+        'description', 'narrative', 'memo', 'note', 'notes', 'purpose', 'remittance',
+        'verwendungszweck', 'libellé', 'libelle', '摘要内容', '明細',
     ],
     'group_key': ['结算批次', '批次号', '业务组键', '汇总号', 'group_key', 'batch_id', 'batch_no'],
     'balance': [
-        '账户余额', '余额', '当前余额', '联机余额', '賬戶餘額',
-        'balance', 'account_balance', 'running_balance', 'closing_balance', 'saldo', '残高',
+        '账户余额', '余额', '当前余额', '联机余额', '賬戶餘額', '餘額',
+        'balance', 'account_balance', 'running_balance', 'closing_balance', 'bank_statement_balance',
+        'saldo', 'solde', '残高',
     ],
 }
 
