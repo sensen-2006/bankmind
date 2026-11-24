@@ -10,7 +10,10 @@ Page({
   data: {
     theme: getTheme(),
     matches: [],
+    filteredMatches: [],
     cases: [],
+    filteredCases: [],
+    query: '',
     matchTotal: 0,
     page: 1,
     totalPages: 1,
@@ -61,11 +64,49 @@ Page({
         totalPages,
         error: ''
       });
+      this.applySearch();
     } catch (e) {
       this.setData({ error: e.message });
     } finally {
       this.setData({ loading: false });
     }
+  },
+  onSearch(e) {
+    this.setData({ query: e.detail.value });
+    this.applySearch();
+  },
+  applySearch() {
+    const terms = String(this.data.query || '')
+      .trim()
+      .toLowerCase()
+      .split(/\s+/)
+      .filter(Boolean);
+    if (!terms.length) {
+      this.setData({
+        filteredMatches: this.data.matches,
+        filteredCases: this.data.cases
+      });
+      return;
+    }
+    const filteredMatches = this.data.matches.filter((m) => {
+      const hay = [
+        m.bankFirst && m.bankFirst.counterparty,
+        m.bankFirst && m.bankFirst.date,
+        m.bankFirst && m.bankFirst.amount,
+        m.displayAmount,
+        m.methodLabel,
+        m.statusLabel
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return terms.every((t) => hay.includes(t));
+    });
+    const filteredCases = this.data.cases.filter((c) => {
+      const hay = [c.title, c.kind, c.status].filter(Boolean).join(' ').toLowerCase();
+      return terms.every((t) => hay.includes(t));
+    });
+    this.setData({ filteredMatches, filteredCases });
   },
   prevPage() {
     if (this.data.page <= 1) return;

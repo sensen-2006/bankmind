@@ -15,22 +15,27 @@
     </view>
   </view>
 
+  <view class="search-box bm-enter stagger-2" wx:if="{{!loading && (matches.length || cases.length || query)}}">
+    <view class="search-symbol" />
+    <input placeholder="搜索本页对方名称、金额、日期或方式" value="{{query}}" bindinput="onSearch" aria-label="搜索待复核事项" />
+  </view>
+
   <view class="notice error" wx:if="{{error}}" bindtap="retry">{{error}} · 轻触重试</view>
   <bm-loading wx:if="{{loading}}" theme="{{theme}}" text="正在同步待办" />
 
-  <view class="empty" wx:if="{{!loading && !matches.length && !cases.length}}">
+  <view class="empty" wx:if="{{!loading && !filteredMatches.length && !filteredCases.length}}">
     <view class="empty-check">✓</view>
-    <view>暂时没有待办</view>
+    <view>{{query ? '没有符合搜索条件的待办' : '暂时没有待办'}}</view>
   </view>
 
-  <view class="row section-heading bm-enter stagger-3" wx:if="{{matches.length}}">
+  <view class="row section-heading bm-enter stagger-3" wx:if="{{filteredMatches.length}}">
     <view class="section">匹配确认</view>
     <text class="muted" wx:if="{{totalPages > 1}}">第 {{page}} / {{totalPages}} 页</text>
   </view>
 
   <view
     class="card review-card tappable bm-enter stagger-3"
-    wx:for="{{matches}}"
+    wx:for="{{filteredMatches}}"
     wx:key="id"
     data-id="{{item.id}}"
     bindtap="match"
@@ -73,10 +78,10 @@
     </view>
   </view>
 
-  <view class="section bm-enter stagger-4" wx:if="{{cases.length}}">异常审批</view>
+  <view class="section bm-enter stagger-4" wx:if="{{filteredCases.length}}">异常审批</view>
   <view
     class="card exception-card tappable bm-enter stagger-4"
-    wx:for="{{cases}}"
+    wx:for="{{filteredCases}}"
     wx:key="id"
     data-id="{{item.id}}"
     bindtap="detail"

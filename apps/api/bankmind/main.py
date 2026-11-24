@@ -504,8 +504,20 @@ def matches(task_id:str,status:str='',method:str='',search:str='',page:int=Query
             'reversal_pending':sum(m.status=='REVERSAL_PENDING' for m in base_rows)}
     rows=[m for m in base_rows if (not status or m.status==status) and (not method or m.method==method)]
     if search:
-        ids={x.id for x in rows_for_task(db,t) if search in x.counterparty+x.description+x.reference}
-        rows=[m for m in rows if ids.intersection(m.bank_ids+m.book_ids)]
+        terms=[tok for tok in search.strip().lower().split() if tok]
+        if terms:
+            ids=set()
+            for x in rows_for_task(db,t):
+                hay=' '.join([
+                    str(x.counterparty or ''),
+                    str(x.description or ''),
+                    str(x.reference or ''),
+                    str(x.date or ''),
+                    amount_text(x.amount_minor,x.currency) if hasattr(x,'amount_minor') else str(getattr(x,'amount','')),
+                ]).lower()
+                if all(tok in hay for tok in terms):
+                    ids.add(x.id)
+            rows=[m for m in rows if ids.intersection(m.bank_ids+m.book_ids)]
     return {'total':len(rows),'counts':counts,'items':[serialize_match(db,m) for m in rows[(page-1)*page_size:page*page_size]]}
 
 @app.get('/api/tasks/{task_id}/matching-guidance')
