@@ -98,7 +98,7 @@
         <text class="field-label">表头行号</text>
         <input class="control" type="number" value="{{header}}" data-name="header" bindinput="setting" disabled="{{busy}}" />
       </view>
-      <view class="muted">支持 CSV、Excel、文本 PDF（单文件上限 10 MB）。微信沙盒限制仅可从聊天记录选文件，建议先将对账单发到「文件传输助手」再选取；断线后重选同一文件可续传。</view>
+      <view class="muted">支持 CSV、Excel（含网银伪表）、文本 PDF、HTML/Markdown、TXT/TSV、MT940、ISO 20022 XML 及 OFX/QFX（上限 10 MB）。建议先将文件发到「文件传输助手」再选取；断线重选可续传。</view>
       <button class="primary" disabled="{{!file || busy}}" bindtap="enqueueFile">上传{{sides[side]}}文件</button>
     </view>
 

@@ -13,16 +13,46 @@ MAX_BYTES = 10 * 1024 * 1024
 MAX_ROWS = 20000
 PRECISION = {'CNY': 2, 'USD': 2, 'EUR': 2, 'HKD': 2, 'JPY': 0, 'KWD': 3}
 ALIASES = {
-    'date': ['交易日期', '记账日期', '入账日期', '日期', 'date', 'booking_date'],
-    'amount': ['发生额', '交易金额', '金额', 'amount', 'amount_signed'],
-    'debit': ['借方发生额', '借方', 'debit', '收入'],
-    'credit': ['贷方发生额', '贷方', 'credit', '支出'],
-    'currency': ['币种', 'currency'], 'account': ['本方账号', '银行账号', '账号', 'account'],
-    'reference': ['银行流水号', '交易编号', '流水号', '参考号', '业务参考号', 'reference'],
-    'counterparty': ['对方名称', '交易对手', '交易对方', '对方户名', 'counterparty'],
-    'description': ['交易摘要', '摘要', '用途', 'description'],
-    'group_key': ['结算批次', '批次号', 'group_key'],
-    'balance': ['账户余额', '余额', 'balance'],
+    'date': [
+        '交易日期', '记账日期', '入账日期', '起息日', '日期', '交易时间',
+        'date', 'booking_date', 'value_date', 'posting_date', 'transaction_date',
+        'buchungsdatum', 'valuta', '取引日', '取引日付', '交易日',
+    ],
+    'amount': [
+        '发生额', '交易金额', '金额', '收支金额', '交易额',
+        'amount', 'amount_signed', 'transaction_amount', 'net_amount',
+        'betrag', '取引金額', '金額',
+    ],
+    'debit': [
+        '借方发生额', '借方金额', '借方', '收入', '收入金额', '转入金额', '贷记金额',
+        'debit', 'debit_amount', 'paid_in', 'credit_in', 'soll', '入金', '借方發生額',
+    ],
+    'credit': [
+        '贷方发生额', '贷方金额', '贷方', '支出', '支出金额', '转出金额', '借记金额',
+        'credit', 'credit_amount', 'paid_out', 'haben', '出金', '貸方發生額',
+    ],
+    'currency': ['币种', '货币', '幣種', 'currency', 'ccy', 'währung', '通貨'],
+    'account': [
+        '本方账号', '银行账号', '账号', '卡号', '账户号', '本方帳號',
+        'account', 'account_number', 'iban', 'konto', '口座番号',
+    ],
+    'reference': [
+        '银行流水号', '交易编号', '流水号', '参考号', '业务参考号', '凭证号', '交易流水号', '核心流水号',
+        'reference', 'ref', 'transaction_id', 'bank_reference', 'end_to_end_id', 'referenz', '取引番号',
+    ],
+    'counterparty': [
+        '对方名称', '交易对手', '交易对方', '对方户名', '对方账户名称', '收/付款人名称', '交易對手', '對方戶名',
+        'counterparty', 'payee', 'payer', 'beneficiary', 'merchant', 'auftraggeber', 'begünstigter', '取引先',
+    ],
+    'description': [
+        '交易摘要', '摘要', '用途', '附言', '备注', '交易附言', '業務摘要',
+        'description', 'narrative', 'memo', 'purpose', 'remittance', 'verwendungszweck', '摘要内容', '明細',
+    ],
+    'group_key': ['结算批次', '批次号', '业务组键', '汇总号', 'group_key', 'batch_id', 'batch_no'],
+    'balance': [
+        '账户余额', '余额', '当前余额', '联机余额', '賬戶餘額',
+        'balance', 'account_balance', 'running_balance', 'closing_balance', 'saldo', '残高',
+    ],
 }
 
 def clean(value):
@@ -63,8 +93,38 @@ def parse_date(value, fmt):
     raise ValueError('日期格式错误或歧义；请确认 ISO/DMY/MDY')
 
 def suggest(columns):
-    return {field: next((c for c in columns if clean(c).lower() in [a.lower() for a in aliases]), '')
-            for field, aliases in ALIASES.items()}
+    """Two-tier header suggestion: L1 exact multilingual dictionary + L2 RapidFuzz fuzzy match."""
+    # L1: Exact match against multilingual bank alias dictionary
+    result = {}
+    used = set()
+    norm_cols = [(c, clean(c).lower()) for c in columns]
+    for field, aliases in ALIASES.items():
+        alias_set = {a.lower() for a in aliases}
+        hit = next((c for c, nc in norm_cols if nc in alias_set and c not in used), '')
+        result[field] = hit
+        if hit:
+            used.add(hit)
+
+    # L2: Conservative RapidFuzz match for remaining unmapped columns (skip debit/credit to avoid direction confusion)
+    try:
+        from rapidfuzz import fuzz
+    except ImportError:
+        return result
+
+    fuzzy_safe_fields = [f for f in ALIASES if f not in ('debit', 'credit') and not result.get(f)]
+    for field in fuzzy_safe_fields:
+        aliases = [a.lower() for a in ALIASES[field]]
+        best_col, best_score = '', 0.0
+        for c, nc in norm_cols:
+            if not nc or c in used:
+                continue
+            score = max((fuzz.ratio(nc, a) for a in aliases), default=0.0)
+            if score >= 82.0 and score > best_score:
+                best_col, best_score = c, score
+        if best_col:
+            result[field] = best_col
+            used.add(best_col)
+    return result
 
 def read_table(content, extension, sheet='', header_row=1):
     if not 1 <= header_row <= 20:
@@ -115,6 +175,10 @@ def read_table(content, extension, sheet='', header_row=1):
         wb.close()
         sheet = ws.title
     elif extension == '.pdf':
+        from .formats import parse_pdf_with_pdfplumber
+        plumber_table = parse_pdf_with_pdfplumber(content, suggest, pdf_printed_controls)
+        if plumber_table is not None:
+            return plumber_table
         from pypdf import PdfReader
         try:
             reader=PdfReader(io.BytesIO(content))
@@ -166,42 +230,69 @@ def read_table(content, extension, sheet='', header_row=1):
         return {'columns':columns,'rows':rows,'sheets':[],'sheet':'','encoding':'pdf-text','pdf_pages':len(reader.pages),
                 'suggested_mapping':suggest(columns),'printed_statement_controls':printed}
     elif extension == '.xls':
-        if not content.startswith(bytes.fromhex('D0CF11E0A1B11AE1')):
-            raise ValueError('XLS损坏或非二进制Excel格式')
-        # BIFF formula records carry cached values which xlrd would otherwise silently read.
-        # Reject them conservatively instead of trusting potentially stale formula caches.
-        import struct
-        from xlrd.compdoc import CompDoc
-        compound=CompDoc(content,logfile=io.StringIO())
-        stream=compound.get_named_stream('Workbook') or compound.get_named_stream('Book')
-        if stream is None:raise ValueError('XLS缺少工作簿数据流')
-        offset=0
-        while offset+4<=len(stream):
-            opcode,size=struct.unpack_from('<HH',stream,offset)
-            if opcode in [0x0006,0x0206,0x0406]:raise ValueError('XLS含公式缓存；请提供已核验的静态值文件')
-            offset+=4+size
-        import xlrd
-        book = xlrd.open_workbook(file_contents=content,on_demand=True)
-        sheets = book.sheet_names()
-        if sheet and sheet not in sheets:
-            raise ValueError('工作表不存在')
-        sheet = sheet or sheets[0]
-        ws=book.sheet_by_name(sheet)
-        if ws.nrows>MAX_ROWS+20:raise ValueError('工作表超过20,000行')
-        matrix=[]
-        for row_index in range(ws.nrows):
-            values=[]
-            for cell in ws.row(row_index):
-                if cell.ctype==xlrd.XL_CELL_DATE:
-                    value=xlrd.xldate_as_datetime(cell.value,book.datemode).date().isoformat()
-                elif cell.ctype==xlrd.XL_CELL_NUMBER:
-                    value=str(int(cell.value)) if cell.value==int(cell.value) else str(cell.value)
-                else:value=str(cell.value) if cell.value is not None else ''
-                values.append(value)
-            matrix.append(values)
-        book.release_resources()
+        from .formats import looks_like_html, parse_html_table
+        if looks_like_html(content):
+            matrix, sheets, sheet, encoding = parse_html_table(content, sheet, header_row)
+        else:
+            if not content.startswith(bytes.fromhex('D0CF11E0A1B11AE1')):
+                raise ValueError('XLS损坏或非二进制Excel格式')
+            # BIFF formula records carry cached values which xlrd would otherwise silently read.
+            # Reject them conservatively instead of trusting potentially stale formula caches.
+            import struct
+            from xlrd.compdoc import CompDoc
+            compound=CompDoc(content,logfile=io.StringIO())
+            stream=compound.get_named_stream('Workbook') or compound.get_named_stream('Book')
+            if stream is None:raise ValueError('XLS缺少工作簿数据流')
+            offset=0
+            while offset+4<=len(stream):
+                opcode,size=struct.unpack_from('<HH',stream,offset)
+                if opcode in [0x0006,0x0206,0x0406]:raise ValueError('XLS含公式缓存；请提供已核验的静态值文件')
+                offset+=4+size
+            import xlrd
+            book = xlrd.open_workbook(file_contents=content,on_demand=True)
+            sheets = book.sheet_names()
+            if sheet and sheet not in sheets:
+                raise ValueError('工作表不存在')
+            sheet = sheet or sheets[0]
+            ws=book.sheet_by_name(sheet)
+            if ws.nrows>MAX_ROWS+20:raise ValueError('工作表超过20,000行')
+            matrix=[]
+            for row_index in range(ws.nrows):
+                values=[]
+                for cell in ws.row(row_index):
+                    if cell.ctype==xlrd.XL_CELL_DATE:
+                        value=xlrd.xldate_as_datetime(cell.value,book.datemode).date().isoformat()
+                    elif cell.ctype==xlrd.XL_CELL_NUMBER:
+                        value=str(int(cell.value)) if cell.value==int(cell.value) else str(cell.value)
+                    else:value=str(cell.value) if cell.value is not None else ''
+                    values.append(value)
+                matrix.append(values)
+            book.release_resources()
+    elif extension in ('.html', '.htm'):
+        from .formats import parse_html_table
+        matrix, sheets, sheet, encoding = parse_html_table(content, sheet, header_row)
+    elif extension in ('.md', '.markdown'):
+        from .formats import parse_markdown_table
+        matrix, sheets, sheet, encoding = parse_markdown_table(content, sheet, header_row)
+    elif extension in ('.sta', '.mt940', '.940'):
+        from .formats import parse_mt940
+        return parse_mt940(content, suggest)
+    elif extension == '.xml':
+        from .formats import parse_camt053
+        return parse_camt053(content, suggest)
+    elif extension in ('.ofx', '.qfx'):
+        from .formats import parse_ofx
+        return parse_ofx(content, suggest)
+    elif extension in ('.txt', '.tsv', '.dat'):
+        from .formats import looks_like_html, looks_like_mt940, parse_ascii_text, parse_html_table, parse_mt940
+        if looks_like_mt940(content):
+            return parse_mt940(content, suggest)
+        if looks_like_html(content):
+            matrix, sheets, sheet, encoding = parse_html_table(content, sheet, header_row)
+        else:
+            matrix, encoding = parse_ascii_text(content, header_row)
     else:
-        raise ValueError('仅支持CSV、XLSX、XLS。扫描PDF/OCR未启用')
+        raise ValueError('支持 CSV、XLSX、XLS、PDF、HTML、Markdown、TXT/TSV、MT940、ISO 20022 XML 及 OFX/QFX 格式')
     if len(matrix) < header_row + 1:
         raise ValueError('缺少表头或数据行')
     columns = [clean(v) for v in matrix[header_row-1]]

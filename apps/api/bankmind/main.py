@@ -276,8 +276,8 @@ def upload(task_id:str,side:str=Form(...),file:UploadFile=File(...),sheet:str=Fo
     filename=Path(file.filename or '').name
     ext=Path(filename).suffix.lower()
     if len(filename)>200: raise HTTPException(422,'文件名过长')
-    if ext not in ('.xls','.xlsx') and sheet:raise HTTPException(422,'此文件类型不接受工作表参数')
-    if ext=='.pdf' and header_row!=1:raise HTTPException(422,'PDF自动识别表头，不接受自定义表头行')
+    if ext not in ('.xls','.xlsx','.html','.htm','.md','.markdown') and sheet:raise HTTPException(422,'此文件类型不接受工作表参数')
+    if ext in ('.pdf','.sta','.mt940','.940','.xml','.ofx','.qfx') and header_row!=1:raise HTTPException(422,'此报文格式自动识别结构，不接受自定义表头行')
     sha=hashlib.sha256(content).hexdigest()
     old=find_import(db,task,side,sha,sheet,header_row,external_consent)
     if old: return {**import_json(old),'idempotent':True}
@@ -492,6 +492,24 @@ def balances(task_id:str,body:Balances,user:User=USER,db:Session=DB):
             values[s][k]=v
     before=t.balances;t.balances=values;t.version+=1
     invalidate_reports(db,t.id);audit(db,user,'BALANCE_INPUT',t.id,before,values,body.reason);db.commit();return task_json(db,t)
+
+@app.post('/api/tasks/{task_id}/xbrl-check')
+def xbrl_balance_check(task_id:str,file:UploadFile=File(...),scope_confirmed:bool=Form(False),user:User=USER,db:Session=DB):
+    role(user,'Admin','Accountant','Reviewer','Auditor')
+    task=scoped(db,Task,task_id,user)
+    content=file.file.read(MAX_BYTES+1)
+    if not content or len(content)>MAX_BYTES:
+        raise HTTPException(422,'XBRL 文件为空或超过 10 MB')
+    from .xbrl_reconcile import extract_xbrl_cash_facts, reconcile_xbrl_balance
+    try:
+        extracted=extract_xbrl_cash_facts(content)
+    except ValueError as exc:
+        raise HTTPException(422,str(exc)) from None
+    book_closing=(task.balances or {}).get('BOOK',{}).get('closing')
+    result=reconcile_xbrl_balance(extracted['facts'],task.currency,task.end_date,book_closing,scope_confirmed=scope_confirmed)
+    audit(db,user,'XBRL_BALANCE_CHECK',task.id,{},{'status':result['status'],'fact':result['fact'],'scope_confirmed':scope_confirmed},'XBRL/iXBRL 财报货币资金期末余额勾稽检查')
+    db.commit()
+    return {**extracted,'reconciliation':result}
 
 @app.get('/api/tasks/{task_id}/matches')
 def matches(task_id:str,status:str='',method:str='',search:str='',page:int=Query(1,ge=1),page_size:int=Query(25,ge=1,le=100),history:bool=False,user:User=USER,db:Session=DB):

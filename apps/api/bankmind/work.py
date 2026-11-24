@@ -13,7 +13,12 @@ from .security import role, scoped
 from .services import confirm_batches, execute_run, find_import, rows_for_task, save_import
 
 CHUNK_BYTES = 1024 * 1024
-LOCAL_EXTENSIONS = {'.csv','.xls','.xlsx','.pdf'}
+LOCAL_EXTENSIONS = {
+    '.csv', '.xls', '.xlsx', '.pdf',
+    '.html', '.htm', '.md', '.markdown',
+    '.txt', '.tsv', '.dat',
+    '.sta', '.mt940', '.940', '.xml', '.ofx', '.qfx',
+}
 logger = logging.getLogger(__name__)
 
 

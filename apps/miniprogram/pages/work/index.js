@@ -355,7 +355,7 @@ Page({
     wx.chooseMessageFile({
       count: 1,
       type: 'file',
-      extension: ['csv', 'xls', 'xlsx', 'pdf'],
+      extension: ['csv', 'xls', 'xlsx', 'pdf', 'html', 'htm', 'md', 'txt', 'tsv', 'sta', 'mt940', 'xml', 'ofx', 'qfx'],
       success: async (result) => {
         const picked = result.tempFiles[0];
         if (!picked) return;
