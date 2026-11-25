@@ -51,6 +51,7 @@
   },
   "style": "v2",
   "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents",
   "usingComponents": {
     "bm-loading": "/components/bm-loading/index",
     "bm-help": "/components/bm-help/index",
