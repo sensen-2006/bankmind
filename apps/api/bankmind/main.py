@@ -33,10 +33,11 @@ from . import document_ai
 from .parsing import read_table, MAX_BYTES, money, amount_text, PRECISION
 from .services import *
 from .ai import investigate, MappingAdvice, safe_evidence
-from .seed import seed
+from .seed import seed, set_trial_passwords
 from .periods import period_json,period_record,require_open_period,seal_period
 from .work_api import router as work_router
-from .operations import pilot_enabled,queue_metrics,readiness,validate_deployment,work_mode
+from .mobile_files import router as mobile_files_router
+from .operations import DEMO_ACCOUNTS,pilot_enabled,public_trial_enabled,queue_metrics,readiness,trial_accounts,validate_deployment,work_mode
 
 def audit_denial(value,status,route):
     with SessionLocal() as db:
@@ -56,6 +57,8 @@ async def lifespan(app):
         if pilot_enabled() and db.scalar(select(Tenant.id).where(Tenant.name.in_(['澄明制造 · 合成演示企业','隔离验证 · 合成企业']))):
             raise RuntimeError('Pilot requires a separate database without seeded demo tenants')
         seed(db)
+        if public_trial_enabled():
+            set_trial_passwords(db)
     if work_mode()!='embedded':
         yield
         return
@@ -76,6 +79,7 @@ app.add_middleware(CORSMiddleware,allow_origins=os.getenv('CORS_ORIGINS','http:/
                    allow_credentials=False,allow_methods=['GET','POST','PATCH'],allow_headers=['Authorization','Content-Type'])
 DB=Depends(get_db);USER=Depends(current_user)
 app.include_router(work_router)
+app.include_router(mobile_files_router)
 
 def related_task(db,model,oid,user):
     obj=scoped(db,model,oid,user)
@@ -89,6 +93,8 @@ def model_dict(obj,keys):
 
 @app.middleware('http')
 async def headers_and_denials(request,call_next):
+    if public_trial_enabled() and not request.url.path.startswith('/api/'):
+        return JSONResponse(status_code=404, content={'detail':'资源不存在'})
     if request.method in ['POST','PATCH']:
         length=request.headers.get('content-length','0')
         if length.isdigit() and int(length)>12*1024*1024:
@@ -125,6 +131,18 @@ def operational_queue(user:User=USER,db:Session=DB):
     return queue_metrics(db,user.tenant_id)
 
 login_attempts=defaultdict(deque)
+
+@app.get('/api/auth/options')
+def auth_options():
+    demo = os.getenv('BANKMIND_DEMO', 'true').lower() == 'true'
+    trial = public_trial_enabled()
+    accounts = trial_accounts() if trial else None
+    return {'demo': demo, 'quick_fill': demo and not trial, 'accounts': [
+        {'username': username, 'role': role, 'label': label}
+        for username, role, label, _ in DEMO_ACCOUNTS
+        if demo and (accounts is None or username in accounts)
+    ]}
+
 @app.post('/api/auth/login')
 def login(body:Login,request:Request,db:Session=DB):
     key=digest((request.client.host if request.client else '')+body.username)
@@ -134,7 +152,10 @@ def login(body:Login,request:Request,db:Session=DB):
     queue.append(now_m)
     lock(db)
     u=db.scalar(select(User).where(User.username==body.username))
-    if not u or not u.enabled or not password_ok(body.password,u.password_hash): raise HTTPException(401,'用户名或密码不正确')
+    allowed = trial_accounts().get(body.username) if public_trial_enabled() else None
+    if (not u or not u.enabled or (public_trial_enabled() and (not allowed or u.role != allowed[0]))
+        or not password_ok(body.password,u.password_hash)):
+        raise HTTPException(401,'用户名或密码不正确')
     token=issue_token(db,u);audit(db,u,'LOGIN',u.id,{}, {'client':'shared-web-mini'},'企业身份认证')
     db.commit();return {'token':token,'expires_in':28800}
 
@@ -476,6 +497,7 @@ def rules(task_id:str,body:Rules,user:User=USER,db:Session=DB):
     audit(db,user,'RULE_VERSION',t.id,before,t.rule_config,body.reason);db.commit();return task_json(db,t)
 
 @app.patch('/api/tasks/{task_id}/balances')
+@app.post('/api/tasks/{task_id}/balances', include_in_schema=False)
 def balances(task_id:str,body:Balances,user:User=USER,db:Session=DB):
     role(user,'Admin','Accountant');lock(db);t=scoped(db,Task,task_id,user);version_guard(t,body.version)
     values={}
