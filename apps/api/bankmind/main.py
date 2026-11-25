@@ -32,12 +32,11 @@ from .schemas import ImportConfirm
 from . import document_ai
 from .parsing import read_table, MAX_BYTES, money, amount_text, PRECISION
 from .services import *
-from .ai import investigate, MappingAdvice, ProviderName, safe_evidence, selected_provider
-from .seed import seed, set_trial_passwords
+from .ai import investigate, MappingAdvice, safe_evidence
+from .seed import seed
 from .periods import period_json,period_record,require_open_period,seal_period
 from .work_api import router as work_router
-from .mobile_files import router as mobile_files_router
-from .operations import DEMO_ACCOUNTS,pilot_enabled,public_trial_enabled,queue_metrics,readiness,trial_accounts,validate_deployment,work_mode
+from .operations import pilot_enabled,queue_metrics,readiness,validate_deployment,work_mode
 
 def audit_denial(value,status,route):
     with SessionLocal() as db:
@@ -57,8 +56,6 @@ async def lifespan(app):
         if pilot_enabled() and db.scalar(select(Tenant.id).where(Tenant.name.in_(['澄明制造 · 合成演示企业','隔离验证 · 合成企业']))):
             raise RuntimeError('Pilot requires a separate database without seeded demo tenants')
         seed(db)
-        if public_trial_enabled():
-            set_trial_passwords(db)
     if work_mode()!='embedded':
         yield
         return
@@ -79,7 +76,6 @@ app.add_middleware(CORSMiddleware,allow_origins=os.getenv('CORS_ORIGINS','http:/
                    allow_credentials=False,allow_methods=['GET','POST','PATCH'],allow_headers=['Authorization','Content-Type'])
 DB=Depends(get_db);USER=Depends(current_user)
 app.include_router(work_router)
-app.include_router(mobile_files_router)
 
 def related_task(db,model,oid,user):
     obj=scoped(db,model,oid,user)
@@ -93,8 +89,6 @@ def model_dict(obj,keys):
 
 @app.middleware('http')
 async def headers_and_denials(request,call_next):
-    if public_trial_enabled() and not request.url.path.startswith('/api/'):
-        return JSONResponse(status_code=404, content={'detail':'资源不存在'})
     if request.method in ['POST','PATCH']:
         length=request.headers.get('content-length','0')
         if length.isdigit() and int(length)>12*1024*1024:
@@ -131,18 +125,6 @@ def operational_queue(user:User=USER,db:Session=DB):
     return queue_metrics(db,user.tenant_id)
 
 login_attempts=defaultdict(deque)
-
-@app.get('/api/auth/options')
-def auth_options():
-    demo = os.getenv('BANKMIND_DEMO', 'true').lower() == 'true'
-    trial = public_trial_enabled()
-    accounts = trial_accounts() if trial else None
-    return {'demo': demo, 'quick_fill': demo and not trial, 'accounts': [
-        {'username': username, 'role': role, 'label': label}
-        for username, role, label, _ in DEMO_ACCOUNTS
-        if demo and (accounts is None or username in accounts)
-    ]}
-
 @app.post('/api/auth/login')
 def login(body:Login,request:Request,db:Session=DB):
     key=digest((request.client.host if request.client else '')+body.username)
@@ -152,10 +134,7 @@ def login(body:Login,request:Request,db:Session=DB):
     queue.append(now_m)
     lock(db)
     u=db.scalar(select(User).where(User.username==body.username))
-    allowed = trial_accounts().get(body.username) if public_trial_enabled() else None
-    if (not u or not u.enabled or (public_trial_enabled() and (not allowed or u.role != allowed[0]))
-        or not password_ok(body.password,u.password_hash)):
-        raise HTTPException(401,'用户名或密码不正确')
+    if not u or not u.enabled or not password_ok(body.password,u.password_hash): raise HTTPException(401,'用户名或密码不正确')
     token=issue_token(db,u);audit(db,u,'LOGIN',u.id,{}, {'client':'shared-web-mini'},'企业身份认证')
     db.commit();return {'token':token,'expires_in':28800}
 
@@ -226,10 +205,10 @@ def edit_user(oid:str,body:UserUpdate,user:User=USER,db:Session=DB):
 def allowed_tasks(db,user):
     return list(db.scalars(select(Task).where(Task.tenant_id==user.tenant_id,Task.account_id.in_(user.account_ids)).order_by(Task.created_at.desc())))
 
-def task_json(db,t,rows=None):
+def task_json(db,t,rows=None,summary=None):
     a=db.get(Account,t.account_id)
     return {**model_dict(t,['id','name','account_id','currency','start_date','end_date','status','current_run','version','rule_config','balances','created_at','creator_id']),
-            'account_name':a.bank+' · '+mask(a.number),'summary':task_summary(db,t,rows)}
+            'account_name':a.bank+' · '+mask(a.number),'summary':summary if summary is not None else task_summary(db,t,rows)}
 
 @app.get('/api/tasks')
 def tasks(user:User=USER,db:Session=DB): return [task_json(db,t) for t in allowed_tasks(db,user)]
@@ -253,8 +232,8 @@ def dashboard(user:User=USER,db:Session=DB):
     auto=sum(s['sides']['BANK']['automatic'] for s in summaries)
     trend=Counter()
     task_ids=[t.id for t in ts]
-    for c in db.scalars(select(Case).where(Case.task_id.in_(task_ids),Case.active==True)):
-        trend[datetime.fromisoformat(c.created_at).astimezone(ZoneInfo('Asia/Shanghai')).date().isoformat()]+=1
+    for created_at in db.scalars(select(Case.created_at).where(Case.task_id.in_(task_ids),Case.active==True)):
+        trend[datetime.fromisoformat(created_at).astimezone(ZoneInfo('Asia/Shanghai')).date().isoformat()]+=1
     return {'task_count':len(ts),'month':month,'month_tasks':sum(datetime.fromisoformat(t.created_at).astimezone(ZoneInfo('Asia/Shanghai')).isoformat().startswith(month) for t in ts),
             'completed':sum(t.status=='COMPLETED' for t in ts),'review_tasks':sum(t.status=='REVIEW' for t in ts),
             'unmatched':sum(s['sides']['BANK']['unmatched']+s['sides']['BOOK']['unmatched'] for s in summaries),
@@ -263,7 +242,7 @@ def dashboard(user:User=USER,db:Session=DB):
             'quality_issues':sum(s['sides'][side]['quarantined'] for s in summaries for side in ['BANK','BOOK']),
             'trend':[{'date':k,'count':v} for k,v in sorted(trend.items())],
             'case_types':dict(sum((Counter(s['case_types']) for s in summaries),Counter())),
-            'recent_tasks':[task_json(db,t) for t in ts[:6]],'data_as_of':now()}
+            'recent_tasks':[task_json(db,t,summary=summaries[i]) for i,t in enumerate(ts[:6])],'data_as_of':now()}
 
 @app.post('/api/tasks/{task_id}/imports')
 def upload(task_id:str,side:str=Form(...),file:UploadFile=File(...),sheet:str=Form(''),header_row:int=Form(1),external_consent:bool=Form(False),user:User=USER,db:Session=DB):
@@ -352,7 +331,6 @@ def workbench(task_id:str,user:User=USER,db:Session=DB):
     return {'task':task_json(db,task,rows),'adjustment':balance_adjustment(db,task,rows),'quality_reasons':reasons.most_common(5),
             'batches':[import_json(b) for b in batches],'templates':templates,'document_ai':bool(document_ai.settings()),
             'document_ai_provider':document_ai.provider_name(),'background_jobs':work_mode()!='off',
-            'can_modify':user.role in ('Admin','Accountant'),
             'signed':report_json(signed) if signed else None}
 
 @app.get('/api/imports/{oid}/extraction')
@@ -398,10 +376,30 @@ def mapping_advice(oid:str,user:User=USER,db:Session=DB):
     audit(db,user,'MAPPING_ADVICE',b.id,after={'provider':'mock'},reason='字段识别建议，不能直接发布');db.commit();return result
 
 @app.get('/api/tasks/{task_id}/transactions')
-def transactions(task_id:str,side:str='',quality:str='',search:str='',page:int=Query(1,ge=1),page_size:int=Query(30,ge=1,le=100),user:User=USER,db:Session=DB):
+def transactions(task_id:str,side:str='',quality:str='',search:str='',issue_code:str='',sort_by:str='',sort_dir:str='asc',page:int=Query(1,ge=1),page_size:int=Query(30,ge=1,le=100),user:User=USER,db:Session=DB):
     task=scoped(db,Task,task_id,user);rows=rows_for_task(db,task)
-    rows=[t for t in rows if (not side or t.side==side) and (not quality or t.quality==quality) and (not search or search in t.counterparty+t.description+t.reference)]
-    rows.sort(key=lambda t:(t.side,t.import_id,t.row_no))
+    terms=[tok.strip().lower() for tok in search.split() if tok.strip()]
+    def _matches_tx(t):
+        if side and t.side!=side: return False
+        if quality and t.quality!=quality: return False
+        if issue_code:
+            codes={str(i.get('code','')) for i in (t.issues or [])}
+            if issue_code not in codes: return False
+        if terms:
+            issue_text=' '.join(f"{i.get('code','')} {i.get('message','')}" for i in (t.issues or []))
+            hay=f"{t.counterparty} {t.description} {t.reference} {t.date} {t.row_no} {t.side} {t.quality} {issue_text} {amount_text(t.amount,t.currency)}".lower()
+            if not all(tok in hay for tok in terms): return False
+        return True
+    rows=[t for t in rows if _matches_tx(t)]
+    rev=(sort_dir.lower()=='desc')
+    if sort_by=='issue':
+        rows.sort(key=lambda t:(' / '.join(sorted({str(i.get('code','')) for i in (t.issues or [])})) or 'ZZZZ',t.side,t.row_no),reverse=rev)
+    elif sort_by=='date':
+        rows.sort(key=lambda t:(t.date or '',t.side,t.row_no),reverse=rev)
+    elif sort_by=='amount':
+        rows.sort(key=lambda t:(abs(t.amount),t.side,t.row_no),reverse=rev)
+    else:
+        rows.sort(key=lambda t:(t.side,t.import_id,t.row_no),reverse=rev)
     return {'total':len(rows),'items':[serialize_tx(t) for t in rows[(page-1)*page_size:page*page_size]]}
 
 @app.get('/api/transactions/{oid}')
@@ -477,7 +475,6 @@ def rules(task_id:str,body:Rules,user:User=USER,db:Session=DB):
     before=t.rule_config;t.rule_config=body.model_dump(exclude={'version','reason'});t.version+=1
     audit(db,user,'RULE_VERSION',t.id,before,t.rule_config,body.reason);db.commit();return task_json(db,t)
 
-@app.post('/api/tasks/{task_id}/balances', include_in_schema=False)
 @app.patch('/api/tasks/{task_id}/balances')
 def balances(task_id:str,body:Balances,user:User=USER,db:Session=DB):
     role(user,'Admin','Accountant');lock(db);t=scoped(db,Task,task_id,user);version_guard(t,body.version)
@@ -682,10 +679,16 @@ def case_list_json(db,c):
 def cases(task_id:str='',status:str='',kind:str='',search:str='',sort:str='',page:int=Query(1,ge=1),page_size:int=Query(25,ge=1,le=100),user:User=USER,db:Session=DB):
     ts=allowed_tasks(db,user)
     if task_id: ts=[scoped(db,Task,task_id,user)]
+    task_names={t.id:t.name for t in ts}
     rows=list(db.scalars(select(Case).where(Case.task_id.in_([t.id for t in ts]),Case.active==True).order_by(Case.created_at.desc(),Case.id)))
-    rows=[c for c in rows if (not status or c.status==status) and (not kind or c.kind==kind) and (not search or search in c.title+c.kind+c.note)]
+    rows=[c for c in rows if (not status or c.status==status) and (not kind or c.kind==kind)]
     items=[case_list_json(db,c) for c in rows]
-    if sort=='difference':
+    terms=[tok.strip().lower() for tok in search.split() if tok.strip()]
+    if terms:
+        items=[it for it in items if all(tok in f"{it['title']} {it['kind']} {it['note']} {it['counterparty']} {it['date']} {it['source_amount']} {task_names.get(it['task_id'],'')}".lower() for tok in terms)]
+    if sort=='oldest':items.sort(key=lambda item:(item['created_at'],item['id']))
+    elif sort=='task':items.sort(key=lambda item:(task_names.get(item['task_id'],''),item['created_at']))
+    elif sort=='difference':
         def magnitude(item):
             amount=item['amount_delta'] or item['source_amount']
             return (item['currency'], -abs(money(amount,item['currency'])) if amount else 0)
@@ -738,7 +741,6 @@ def case_detail(oid:str,user:User=USER,db:Session=DB):
             'candidates':[serialize_tx(db.get(Transaction,i)) for i in c.candidates],
             'events':[model_dict(e,['id','actor_id','action','before','after','reason','created_at']) for e in db.scalars(select(CaseEvent).where(CaseEvent.case_id==c.id).order_by(CaseEvent.created_at))]}
 
-@app.post('/api/cases/{oid}', include_in_schema=False)
 @app.patch('/api/cases/{oid}')
 def edit_case(oid:str,body:CaseUpdate,user:User=USER,db:Session=DB):
     role(user,'Admin','Accountant','Reviewer');lock(db);c,t=related_task(db,Case,oid,user);version_guard(c,body.version)
@@ -794,17 +796,9 @@ def case_decision(oid:str,body:Decision,user:User=USER,db:Session=DB):
     db.add(Receipt(tenant_id=user.tenant_id,key=key,request_hash=digest([oid,body.model_dump()]),result=result));db.commit();return result
 
 @app.post('/api/cases/{oid}/investigate')
-def ai_investigate(oid:str,request:Request,provider:ProviderName|None=None,
-                   confirm_external:bool=False,user:User=USER,db:Session=DB):
+def ai_investigate(oid:str,request:Request,user:User=USER,db:Session=DB):
     from types import SimpleNamespace
-    role(user,'Admin','Accountant','Reviewer')
-    if provider and provider != 'mock' and not confirm_external:
-        raise HTTPException(400,'请先确认本次模型调用及外发范围')
-    try:
-        model_provider = selected_provider(provider) if provider else None
-    except ValueError:
-        raise HTTPException(503,'所选模型未配置，请在「我的」检查连接') from None
-    lock(db);c,t=related_task(db,Case,oid,user)
+    role(user,'Admin','Accountant','Reviewer');lock(db);c,t=related_task(db,Case,oid,user)
     require_open_period(db,t)
     if not c.active:raise HTTPException(409,'旧证据版本不允许发起调查')
     if c.status=='CLOSED':raise HTTPException(409,'异常已关闭')
@@ -819,7 +813,7 @@ def ai_investigate(oid:str,request:Request,provider:ProviderName|None=None,
     # Network I/O is outside every database transaction. Metadata is committed
     # separately so even stale/discarded results retain a provider call trace.
     with SessionLocal() as invocation_db:
-        result=investigate(invocation_db,user,snapshot,rows,provider=model_provider,provider_name=provider)
+        result=investigate(invocation_db,user,snapshot,rows)
         invocation_db.commit()
     lock(db);db.expire_all()
     invocation=db.get(AIInvocation,result['invocation_id'])
@@ -986,7 +980,7 @@ def export_report(oid:str,format:str='xlsx',own_draft:bool=False,user:User=USER,
     return StreamingResponse(io.BytesIO(content),media_type=mime,headers={'Content-Disposition':f'attachment; filename="BankMind-{r.id[:8]}.{format}"'})
 
 @app.get('/api/audit')
-def audit_events(task_id:str='',page:int=Query(1,ge=1),page_size:int=Query(30,ge=1,le=100),user:User=USER,db:Session=DB):
+def audit_events(task_id:str='',action:str='',search:str='',sort:str='',page:int=Query(1,ge=1),page_size:int=Query(30,ge=1,le=100),user:User=USER,db:Session=DB):
     role(user,'Admin','Reviewer','Auditor')
     events=list(db.scalars(select(Audit).where(Audit.tenant_id==user.tenant_id).order_by(Audit.created_at.desc(),Audit.id.desc())))
     # Audit scope is restricted to objects in authorized tasks plus own identity/authorized settings.
@@ -995,7 +989,10 @@ def audit_events(task_id:str='',page:int=Query(1,ge=1),page_size:int=Query(30,ge
     object_ids=set(ids)
     for model in [ImportBatch,Transaction,Run,Match,Case,Report,EvidenceAttachment,SourceControl,LearningFeedback,LearningModel]:object_ids.update(db.scalars(select(model.id).where(model.task_id.in_(ids))))
     if not task_id and user.role=='Admin':object_ids.update(db.scalars(select(User.id).where(User.tenant_id==user.tenant_id)));object_ids.update(user.account_ids)
-    events=[e for e in events if e.object_id in object_ids]
+    terms=[tok.strip().lower() for tok in search.split() if tok.strip()]
+    events=[e for e in events if e.object_id in object_ids and (not action or e.action==action) and (not terms or all(tok in f"{e.action} {e.reason} {e.actor_id} {e.object_id}".lower() for tok in terms))]
+    if sort=='oldest': events.reverse()
+    elif sort=='action': events.sort(key=lambda e:(e.action,e.created_at))
     return {'total':len(events),'items':[model_dict(e,['id','actor_id','action','object_id','before','after','reason','prev_hash','event_hash','created_at']) for e in events[(page-1)*page_size:page*page_size]]}
 
 @app.get('/api/ai/calls')

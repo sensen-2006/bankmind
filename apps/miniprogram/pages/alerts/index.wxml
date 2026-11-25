@@ -4,6 +4,26 @@
     <text class="page-count">{{total}}</text>
   </view>
 
+  <view class="search-box bm-enter stagger-1">
+    <view class="search-symbol" />
+    <input placeholder="模糊搜索对方 / 类型 / 意见" value="{{search}}" bindinput="onSearchInput" aria-label="搜索异常" />
+  </view>
+
+  <view class="row bm-enter stagger-2" style="gap: 14rpx; margin-bottom: 16rpx;">
+    <picker style="flex: 1;" mode="selector" range="{{taskLabels}}" value="{{taskIndex}}" bindchange="onTaskPick">
+      <view class="picker-pill">
+        <text style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{taskLabels[taskIndex] || '全部任务'}}</text>
+        <text class="muted">▾</text>
+      </view>
+    </picker>
+    <picker style="width: 240rpx;" mode="selector" range="{{sortLabels}}" value="{{sortIndex}}" bindchange="onSortPick">
+      <view class="picker-pill">
+        <text>{{sortLabels[sortIndex]}}</text>
+        <text class="muted">▾</text>
+      </view>
+    </picker>
+  </view>
+
   <scroll-view scroll-x enable-flex class="filter-scroll bm-enter stagger-2">
     <view class="chip-list">
       <button class="chip {{status === '' ? 'active' : ''}}" data-status="" bindtap="filter">全部</button>
@@ -14,7 +34,7 @@
   </scroll-view>
 
   <view class="notice error" wx:if="{{error}}">{{error}}</view>
-  <bm-loading wx:if="{{loading}}" text="正在读取异常" />
+  <bm-loading wx:if="{{loading}}" theme="{{theme}}" text="正在读取异常" />
   <view class="empty" wx:if="{{!loading && !items.length}}">没有符合筛选的异常</view>
 
   <view

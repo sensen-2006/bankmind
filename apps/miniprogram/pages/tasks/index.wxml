@@ -73,7 +73,7 @@
   </scroll-view>
 
   <view class="notice error" wx:if="{{error}}" bindtap="load">{{error}} · 轻触重试</view>
-  <bm-loading wx:if="{{loading}}" text="正在读取对账任务" />
+  <bm-loading wx:if="{{loading}}" theme="{{theme}}" text="正在读取对账任务" />
 
   <view wx:if="{{!loading && !filteredTasks.length}}" class="empty">
     <view class="empty-symbol">≡</view>

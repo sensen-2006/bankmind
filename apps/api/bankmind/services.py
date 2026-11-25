@@ -325,9 +325,20 @@ def program_determined(m):
     if 'program_determined' in evidence:return bool(evidence['program_determined'])
     return m.method in ['L1_REFERENCE','L2_EXACT'] and not evidence.get('auto_blockers')
 
+def _summary_tx_rows(db, task):
+    """Fetch only the 5 lightweight scalar columns needed by task_summary & balance_control.
+
+    Avoids hydrating full Transaction ORM objects and parsing large raw/issues JSON
+    columns across tens of thousands of rows on dashboard/task-list requests.
+    """
+    return db.execute(
+        select(Transaction.id, Transaction.side, Transaction.quality, Transaction.amount, Transaction.currency)
+        .where(Transaction.task_id == task.id, Transaction.tenant_id == task.tenant_id)
+    ).all()
+
 def task_summary(db,task,rows=None):
-    txs=rows_for_task(db,task) if rows is None else rows; matches=active_matches(db,task)
-    cases=list(db.scalars(select(Case).where(Case.task_id==task.id,Case.active==True)))
+    txs=_summary_tx_rows(db,task) if rows is None else rows; matches=active_matches(db,task)
+    case_rows=db.execute(select(Case.status, Case.kind).where(Case.task_id==task.id,Case.active==True)).all()
     certain={i for m in matches if m.status in ['DETERMINISTIC','APPROVED','REVERSAL_PENDING'] for i in m.bank_ids+m.book_ids}
     from .carry import cleared_ids
     certain.update(cleared_ids(db,task))
@@ -335,17 +346,18 @@ def task_summary(db,task,rows=None):
     suggestions={i for m in matches if m.status=='PENDING' for i in m.bank_ids+m.book_ids}
     summary={}
     for side in ['BANK','BOOK']:
-        rows=[t for t in txs if t.side==side];valid=[t for t in rows if t.quality=='VALID']
-        total=len(rows)
-        summary[side]={'raw':total,'valid':len(valid),'quarantined':sum(t.quality=='QUARANTINED' for t in rows),'excluded':sum(t.quality=='EXCLUDED' for t in rows),
+        side_rows=[t for t in txs if t.side==side];valid=[t for t in side_rows if t.quality=='VALID']
+        total=len(side_rows)
+        auto_cnt=sum(t.id in automatic for t in valid)
+        summary[side]={'raw':total,'valid':len(valid),'quarantined':sum(t.quality=='QUARANTINED' for t in side_rows),'excluded':sum(t.quality=='EXCLUDED' for t in side_rows),
                        'matched':sum(t.id in certain for t in valid),'suggested':sum(t.id in suggestions for t in valid),
-                       'unmatched':sum(t.id not in certain for t in valid),'automatic':sum(t.id in automatic for t in valid),
-                       'coverage':round(100*sum(t.id in automatic for t in valid)/len(valid),1) if valid else 0,
+                       'unmatched':sum(t.id not in certain for t in valid),'automatic':auto_cnt,
+                       'coverage':round(100*auto_cnt/len(valid),1) if valid else 0,
                        'matched_amount':amount_text(sum(abs(t.amount) for t in valid if t.id in certain),task.currency),
                        'unmatched_amount':amount_text(sum(abs(t.amount) for t in valid if t.id not in certain),task.currency),
                        'valid_net_amount':amount_text(sum(t.amount for t in valid),task.currency)}
     return {'sides':summary,'match_groups':len(matches),'pending_matches':sum(m.status in ['PENDING','REVERSAL_PENDING'] for m in matches),
-            'open_cases':sum(c.status!='CLOSED' for c in cases),'case_types':dict(Counter(c.kind for c in cases)),
+            'open_cases':sum(status!='CLOSED' for status,_ in case_rows),'case_types':dict(Counter(kind for _,kind in case_rows)),
             'balance_control':balance_control(db,task,txs),'data_as_of':now()}
 
 def balance_adjustment(db,task,txs):
